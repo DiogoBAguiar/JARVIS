@@ -1,0 +1,14 @@
+# --- Observabilidade & Infraestrutura ---
+colorlog==6.8.0          # Para logs coloridos e estruturados no terminal
+
+# --- Área de Broca (Audição - STT) ---
+vosk==0.3.45             # Reconhecimento de fala offline (Local-First)
+sounddevice==0.4.6       # Captura de áudio moderna (Substitui PyAudio)
+numpy==1.26.4            # Processamento numérico de ondas sonoras
+
+# --- Área de Broca (Fala - TTS) ---
+edge-tts==6.1.9          # Síntese de voz neural da Microsoft (Gratuito/Alta qualidade)
+pygame==2.5.2            # Reprodução de áudio cross-platform
+
+# --- Córtex Motor (Ferramentas) ---
+pyautogui==0.9.54        # Controle de Mouse e Teclado

@@ -1,37 +1,37 @@
+import time
 from jarvis_system.cortex_frontal.observability import JarvisLogger
-from jarvis_system.cortex_motor.tool_registry import registry
+from jarvis_system.cortex_frontal.event_bus import bus, Evento
+from jarvis_system.protocol import Eventos
+from jarvis_system.area_broca.listen import ears
+from jarvis_system.area_broca.speak import mouth
+# Importa o novo cérebro (Isso já instancia a classe e registra os eventos)
+from jarvis_system.cortex_frontal import orchestrator 
+import jarvis_system.cortex_motor.os_actions
 
 log = JarvisLogger("SYSTEM_ROOT")
 
-# --- Simulação de Carregamento de Habilidades ---
-# Em produção, isso estaria dentro de /agentes_especialistas
-@registry.register(name="sistema_ping", description="Verifica latência interna")
-def action_ping(echo: str = "pong"):
-    """Retorna o eco recebido."""
-    import time
-    time.sleep(0.1)  # Simula processamento
-    return f"ECHO: {echo}"
-
 def wake_up():
-    log.info("Iniciando sequência de boot do JARVIS...")
+    log.info("--- INICIANDO JARVIS (Arquitetura Cognitiva v1) ---")
+    
+    # Nota: Não precisamos mais inscrever funções manualmente aqui.
+    # Os módulos (ears, mouth, orchestrator) se auto-registram ao serem importados/iniciados.
+    
+    # Ativa Sensores
+    ears.start()
+    
+    # Sinal de Vida
+    bus.publicar(Evento(
+        nome=Eventos.FALAR, 
+        dados={"texto": "Córtex Frontal conectado. Aguardando ordens."}
+    ))
     
     try:
-        # 1. Boot do Córtex Motor
-        log.info("Carregando ferramentas motoras...")
-        tools = registry.list_tools()
-        log.info(f"Ferramentas carregadas: {len(tools)}", tools=tools)
-
-        # 2. Teste de Sanidade (Executar uma ação)
-        log.info("Executando teste motor...")
-        resultado = registry.execute("sistema_ping", echo="Hello World")
-        
-        log.info("Resultado do teste motor", output=resultado)
-        
-        log.info("Jarvis operante e aguardando comandos.")
-        
-    except Exception as e:
-        log.error("Falha crítica durante o boot", error_type=type(e).__name__)
-        raise
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        log.info("Interrupção manual detectada.")
+        ears.stop()
+        log.info("JARVIS Offline.")
 
 if __name__ == "__main__":
     wake_up()
