@@ -16,8 +16,8 @@ def open_calculator():
         if system == "Windows":
             subprocess.Popen("calc.exe")
         elif system == "Linux":
-            subprocess.Popen(["gnome-calculator"]) # Exemplo
-        elif system == "Darwin": # Mac
+            subprocess.Popen(["gnome-calculator"]) 
+        elif system == "Darwin":
             subprocess.Popen(["open", "-a", "Calculator"])
         return "Calculadora iniciada."
     except Exception as e:
@@ -35,6 +35,12 @@ def open_notepad():
             return "Comando disponível apenas para Windows."
     except Exception as e:
         return f"Erro: {str(e)}"
+
+# --- CORREÇÃO: ADICIONADA A FERRAMENTA FALTANTE ---
+@registry.register(name="sistema_ping", description="Verificação de status")
+def system_ping():
+    """Responde ao comando de status."""
+    return "Todos os sistemas operacionais. Pronto para uso."
 
 @registry.register(name="sistema_desligar", description="Desliga o Jarvis", safe_mode=False)
 def shutdown_jarvis():
