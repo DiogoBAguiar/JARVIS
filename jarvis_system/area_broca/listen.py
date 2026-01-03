@@ -4,7 +4,7 @@ import queue
 import threading
 import sounddevice as sd
 import vosk
-from typing import Optional, List
+from typing import Optional
 
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
@@ -25,13 +25,12 @@ class DualListenService:
         self._queue = queue.Queue()
         self._running = False
         self._thread = None
-        
         self.rec_pt = None
         self.rec_en = None
         self._load_models()
 
     def _load_models(self):
-        log.info("Inicializando Validação Cruzada (PT <-> EN)...")
+        log.info("Inicializando Validação Cruzada...")
         if os.path.exists(PATH_PT):
             self.rec_pt = vosk.KaldiRecognizer(vosk.Model(PATH_PT), SAMPLE_RATE)
         if os.path.exists(PATH_EN):
@@ -41,8 +40,7 @@ class DualListenService:
         self._queue.put(bytes(indata))
 
     def _listen_loop(self):
-        log.info("Monitoramento Ativo. Juiz Tolerante pronto.")
-        
+        log.info("Juiz Auditivo: Pronto.")
         try:
             with sd.RawInputStream(samplerate=SAMPLE_RATE, blocksize=BLOCK_SIZE, device=None,
                                    dtype='int16', channels=CHANNELS, callback=self._callback):
@@ -74,7 +72,6 @@ class DualListenService:
         pt_lower = pt.lower()
         en_lower = en.lower()
         
-        # 1. Atualização baseada nos seus logs recentes
         confusoes_pt = [
             "jardins", "jardim", "já vos", "chaves", "james", 
             "tardes", "aves", "jovens", "já", "já disse"
@@ -82,43 +79,53 @@ class DualListenService:
         
         validadores_en = ["jarvis", "service", "harvest", "java", "davis", "jobs", "chavis"]
 
-        vencedor = pt # Default
+        # Variável para armazenar o texto final corrigido
+        texto_final = pt # Começamos assumindo que o PT está certo
 
-        # CASO A: EN ouviu "Jarvis" explicitamente -> Vitória Suprema
+        eh_wake_word = False
+
+        # CASO A: EN ouviu "Jarvis" explicitamente
         if "jarvis" in en_lower:
-            vencedor = en
+            eh_wake_word = True
+            # Se o PT ouviu algo diferente no começo, vamos reconstruir usando o PT como base
+            # mas forçando "jarvis" no início
+            texto_final = self._forcar_wake_word(pt)
 
-        # CASO B: PT ouviu uma confusão conhecida ("Chaves", "Jovens")
+        # CASO B: PT ouviu uma confusão conhecida
         elif any(erro in pt_lower for erro in confusoes_pt):
             
-            # Sub-caso B1: O EN confirma ("Harvest")
             en_confirma = any(validador in en_lower for validador in validadores_en)
-            
-            # Sub-caso B2: O EN está MUDO (Vazio)
-            # Se o PT tem certeza que ouviu "Chaves" e o EN não ouviu nada, 
-            # damos o benefício da dúvida e assumimos que é Wake Word.
             en_mudo = (en_lower.strip() == "")
 
-            if en_confirma:
-                log.info(f"[JUIZ] Confirmado por EN: '{en}' -> WAKE WORD")
-                vencedor = "jarvis" # Força wake word limpa
-                
-            elif en_mudo:
-                log.info(f"[JUIZ] EN Mudo. PT '{pt}' é suspeito forte -> WAKE WORD (Benefício da Dúvida)")
-                vencedor = "jarvis" # Força wake word limpa
-                
+            if en_confirma or en_mudo:
+                log.info(f"[JUIZ] Correção Ativada (PT='{pt}' | EN='{en}')")
+                eh_wake_word = True
+                texto_final = self._forcar_wake_word(pt)
             else:
-                # Se EN ouviu algo diferente (ex: "Banana"), aí sim vetamos
-                log.info(f"[JUIZ] Vetado por EN: '{en}' -> Mantém '{pt}'")
-                vencedor = pt
+                log.info(f"[JUIZ] Vetado (PT='{pt}' | EN='{en}')")
 
         # Publica
-        if vencedor == "jarvis":
-             # Se decidimos que é wake word, mandamos limpo
-             bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": "jarvis"}))
+        if eh_wake_word:
+             log.info(f"Ouvido Final (Corrigido): '{texto_final}'")
+             bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": texto_final}))
         else:
-             bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": vencedor}))
-             log.info(f"Ouvido Final: '{vencedor}'")
+             # Se não for wake word, manda o que veio (provavelmente comando puro ou lixo)
+             # Mas só mandamos se não for vazio
+             if texto_final.strip():
+                log.info(f"Ouvido Final (Original): '{texto_final}'")
+                bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": texto_final}))
+
+    def _forcar_wake_word(self, texto_original: str) -> str:
+        """
+        Pega a frase original (ex: 'James abre a porta') e troca a primeira palavra por 'jarvis'.
+        """
+        palavras = texto_original.split()
+        if not palavras:
+            return "jarvis"
+        
+        # Troca a primeira palavra (o erro) pela correta
+        palavras[0] = "jarvis"
+        return " ".join(palavras)
 
     def start(self):
         if self._running: return

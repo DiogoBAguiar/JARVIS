@@ -1,46 +1,80 @@
+import os
+from groq import Groq
 import ollama
 from jarvis_system.cortex_frontal.observability import JarvisLogger
+# --- IMPORT CORRIGIDO (Agora vem da pasta hipocampo) ---
+from jarvis_system.hipocampo.memoria import memoria 
 
-log = JarvisLogger("CORTEX_LLM")
+log = JarvisLogger("CORTEX_HYBRID_BRAIN")
 
-# Defina o modelo que você baixou no terminal (ex: llama3.2, llama3, mistral)
-MODELO_ATIVO = "llama3.2"
+# COLOQUE SUA API KEY DA GROQ AQUI
+GROQ_API_KEY = "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" 
 
-class LLMService:
-    """
-    Interface de comunicação com a Inteligência Artificial Local (Ollama).
-    """
+MODELO_NUVEM = "llama-3.3-70b-versatile"
+MODELO_LOCAL = "qwen2:0.5b"
+
+class HybridBrain:
     def __init__(self):
-        self.contexto_sistema = (
-            "Você é o J.A.R.V.I.S, uma inteligência artificial assistente. "
-            "Responda sempre em Português do Brasil. "
-            "Suas respostas serão faladas em voz alta, então SEJA BREVE. "
-            "Máximo de 2 frases. Não use listas, markdown ou blocos de código. "
-            "Seja direto, útil e levemente formal."
+        self.client_groq = None
+        if GROQ_API_KEY and "gsk_" in GROQ_API_KEY:
+            try:
+                self.client_groq = Groq(api_key=GROQ_API_KEY)
+            except Exception as e:
+                log.error(f"Erro Groq: {e}")
+
+        self.base_system_prompt = (
+            "Você é o J.A.R.V.I.S. Responda em Português do Brasil. "
+            "Seja breve e prestativo (máximo 2 frases faladas)."
         )
 
     def pensar(self, texto_usuario: str) -> str:
-        """
-        Envia o texto para o modelo e retorna a resposta.
-        """
-        log.info(f"Enviando para o Llama ({MODELO_ATIVO})...")
+        # 1. O Cérebro consulta o Hipocampo (RAG)
+        contexto_passado = memoria.relembrar(texto_usuario)
         
+        prompt_final = texto_usuario
+        
+        # Se o Hipocampo trouxe lembranças, injetamos no pensamento
+        if contexto_passado:
+            log.info("Contexto injetado via Hipocampo.")
+            prompt_final = (
+                f"Memórias relevantes recuperadas do seu banco de dados:\n{contexto_passado}\n\n"
+                f"Usuário diz: {texto_usuario}"
+            )
+
+        # 2. Processamento Cognitivo (Groq ou Local)
+        if self.client_groq:
+            return self._pensar_nuvem(prompt_final)
+        
+        return self._pensar_local(texto_usuario) # Local geralmente não suporta contexto grande
+
+    def _pensar_nuvem(self, prompt: str) -> str:
         try:
-            response = ollama.chat(model=MODELO_ATIVO, messages=[
-                {'role': 'system', 'content': self.contexto_sistema},
-                {'role': 'user', 'content': texto_usuario},
-            ])
-            
-            resposta_ia = response['message']['content']
-            log.info(f"Pensamento gerado: '{resposta_ia}'")
-            return resposta_ia
-
+            completion = self.client_groq.chat.completions.create(
+                model=MODELO_NUVEM,
+                messages=[
+                    {"role": "system", "content": self.base_system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=150,
+            )
+            return completion.choices[0].message.content
         except Exception as e:
-            # Captura erros comuns (Ollama desligado, modelo não baixado)
-            log.error(f"Falha na sinapse neural: {e}")
-            if "connection refused" in str(e).lower():
-                return "Meus sistemas cognitivos estão offline. Verifique se o Ollama está rodando."
-            return "Não consegui processar esse pensamento."
+            log.error(f"Erro Nuvem: {e}")
+            return "Erro na conexão neural."
 
-# Instância Singleton
-llm = LLMService()
+    def _pensar_local(self, texto: str) -> str:
+        try:
+            response = ollama.chat(model=MODELO_LOCAL, messages=[
+                {'role': 'system', 'content': "Seja breve."},
+                {'role': 'user', 'content': texto},
+            ], options={"num_ctx": 512, "temperature": 0.1})
+            return response['message']['content']
+        except:
+            return "Sistemas cognitivos offline."
+
+    # Método para forçar o aprendizado
+    def aprender(self, fato: str):
+        return memoria.memorizar(fato)
+
+llm = HybridBrain()
