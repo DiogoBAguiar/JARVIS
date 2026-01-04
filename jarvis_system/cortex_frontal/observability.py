@@ -49,5 +49,12 @@ class JarvisLogger:
     def debug(self, message: str, **context):
         self.logger.debug(self._format_message(message, context))
 
+    # --- [NOVO] Adicionado para corrigir o erro do listen.py ---
+    def critical(self, message: str, exc_info=True, **context):
+        """Erros críticos que podem derrubar a aplicação."""
+        # Adiciona um ícone visual para destacar no console
+        msg_formatada = self._format_message(f"🛑 FATAL: {message}", context)
+        self.logger.critical(msg_formatada, exc_info=exc_info)
+
 # Instância Singleton para importação rápida se necessário, 
 # mas prefira instanciar por módulo.
