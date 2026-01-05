@@ -1,88 +1,116 @@
-import chromadb
-import uuid
 import os
-from datetime import datetime
+import uuid
+import datetime
+from typing import List, Optional
+
+# Logging do Sistema
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
-log = JarvisLogger("HIPOCAMPO_MEMORIA")
+log = JarvisLogger("HIPOCAMPO")
+
+# Tentativa de importação segura do ChromaDB
+try:
+    import chromadb
+    from chromadb.config import Settings
+    CHROMA_AVAILABLE = True
+except ImportError:
+    log.warning("⚠️ Biblioteca 'chromadb' não encontrada. Memória desativada.")
+    CHROMA_AVAILABLE = False
 
 class Hipocampo:
     def __init__(self):
-        # Define o caminho do banco para ficar dentro da pasta do projeto
-        db_path = os.path.join(os.getcwd(), "jarvis_memory_db")
+        # Configuração de Caminho: Garante que o DB fique na raiz do projeto
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.db_path = os.path.join(base_dir, "data", "jarvis_memory_db")
         
-        # Cliente persistente (salva no disco)
-        # O Chroma baixa automaticamente um modelo leve (all-MiniLM-L6-v2) na primeira vez
-        try:
-            self.client = chromadb.PersistentClient(path=db_path)
-            
-            # Coleção de memórias episódicas (Fatos sobre você)
-            self.episodica = self.client.get_or_create_collection(name="episodic_memory")
-            
-            qtd_memorias = self.episodica.count()
-            log.info(f"Sistema Límbico conectado. {qtd_memorias} memórias acessíveis.")
-        except Exception as e:
-            log.critical(f"ERRO CRÍTICO AO INICIAR MEMÓRIA: {e}")
-            raise e
+        self.client = None
+        self.collection = None
+        self._is_connected = False
 
-    def memorizar(self, texto: str, tags: str = "fato"):
+    def _conectar(self) -> bool:
         """
-        Consolida uma memória de curto prazo em longo prazo.
+        Lazy Connection: Só conecta quando necessário.
+        Retorna True se conectado com sucesso.
         """
-        log.info(f"Consolidando no hipocampo: '{texto}'")
-        
+        if self._is_connected: return True
+        if not CHROMA_AVAILABLE: return False
+
+        log.info("🔌 Conectando ao Hipocampo (ChromaDB)...")
         try:
-            self.episodica.add(
+            os.makedirs(self.db_path, exist_ok=True)
+
+            # --- CORREÇÃO DO TYPO AQUI ---
+            # De: anonnymized_telemetry (Errado)
+            # Para: anonymized_telemetry (Correto)
+            self.client = chromadb.PersistentClient(
+                path=self.db_path,
+                settings=Settings(allow_reset=True, anonymized_telemetry=False)
+            )
+            
+            self.collection = self.client.get_or_create_collection(
+                name="episodic_memory",
+                metadata={"hnsw:space": "cosine"}
+            )
+            
+            self._is_connected = True
+            log.info(f"✅ Memória carregada. {self.collection.count()} registros ativos.")
+            return True
+        except Exception as e:
+            # Captura erro, mas não crita o programa inteiro, apenas desativa a memória
+            log.critical(f"🛑 FATAL: ❌ Falha crítica no ChromaDB: {e}")
+            return False
+
+    def memorizar(self, texto: str, tags: str = "fato_geral") -> str:
+        """Adiciona nova memória de longo prazo."""
+        if not self._conectar():
+            return "Erro: Sistema de memória indisponível."
+
+        log.info(f"💾 Consolidando: '{texto}'")
+        try:
+            self.collection.add(
                 documents=[texto],
-                metadatas=[{"timestamp": str(datetime.now()), "tags": tags}],
+                metadatas=[{
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "source": "user_interaction",
+                    "tags": tags
+                }],
                 ids=[str(uuid.uuid4())]
             )
-            return "Memória consolidada com sucesso."
+            return "Memória consolidada."
         except Exception as e:
             log.error(f"Erro de gravação: {e}")
-            return "Falha ao gravar memória."
+            return "Falha na gravação."
 
-    def relembrar(self, consulta: str, n_resultados: int = 2) -> str:
-        """
-        Recupera memórias associativas baseadas no contexto (Busca Semântica).
-        """
+    def relembrar(self, query: str, limit: int = 3) -> str:
+        """Recupera contexto relevante."""
+        if not self._conectar(): return ""
+        if not query.strip(): return ""
+
         try:
-            # 1. Se o cérebro está vazio, não perca tempo buscando
-            if self.episodica.count() == 0:
+            if self.collection.count() == 0: return ""
+
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=limit
+            )
+
+            docs = results.get('documents', [[]])[0]
+            
+            if not docs: 
                 return ""
 
-            # 2. Busca Semântica
-            results = self.episodica.query(
-                query_texts=[consulta],
-                n_results=n_resultados
-            )
+            formatted_memories = [f"- {doc}" for doc in docs]
+            contexto = "\n".join(formatted_memories)
             
-            # Extrai os documentos encontrados (lista de listas)
-            memorias_encontradas = results['documents'][0]
-            
-            if not memorias_encontradas:
-                return ""
-            
-            # 3. Formata para o Cérebro ler de forma organizada
-            # Adiciona um marcador visual para a LLM entender que isso é passado
-            contexto = "\n".join([f"- [MEMÓRIA]: {m}" for m in memorias_encontradas])
-            
-            log.info(f"Memória ativada para '{consulta}': {len(memorias_encontradas)} fatos recuperados.")
+            log.debug(f"🧠 Flashback ({len(docs)}): {contexto[:50]}...")
             return contexto
-            
+
         except Exception as e:
-            log.error(f"Falha na recuperação de memória: {e}")
+            log.error(f"Erro de leitura: {e}")
             return ""
 
-    def esquecer_tudo(self):
-        """DANGER: Reseta a memória (Útil para testes)"""
-        try:
-            self.client.delete_collection("episodic_memory")
-            self.episodica = self.client.get_or_create_collection(name="episodic_memory")
-            log.warning("Todas as memórias foram apagadas.")
-            return "Memória formatada."
-        except Exception as e:
-            return f"Erro ao apagar: {e}"
+    def status(self) -> str:
+        if not self._conectar(): return "Offline"
+        return f"Online ({self.collection.count()} memórias)"
 
-# Instância exportada (Singleton)
 memoria = Hipocampo()

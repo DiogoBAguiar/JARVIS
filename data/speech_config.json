@@ -1,0 +1,68 @@
+{
+    "wake_words": [
+        "jarvis", "jarbas", "computer", "computador", "sistema", "sexta-feira", "alfred", "james"
+    ],
+    "confirmation_words": [
+        "sim", "s", "yes", "aham", "pode", "pode ser", "claro", "com certeza", 
+        "ok", "okay", "beleza", "fechou", "tá bom", "tá", "isso", "exato", 
+        "correto", "positivo", "confirma", "vai", "bora", "manda ver",
+        "não", "nao", "no", "nem pensar", "negativo", "cancela", "esquece", 
+        "para", "errado", "jamais", "deixa quieto"
+    ],
+    "known_apps": [
+        "spotify", "whatsapp", "telegram", "discord", 
+        "chrome", "firefox", "edge", "opera", "brave",
+        "code", "visual studio", "pycharm", "intellij", "terminal", "powershell", "git", "docker",
+        "steam", "league of legends", "valorant", "counter strike", "epic games", "the witcher", "clash royale",
+        "word", "excel", "powerpoint", "notion", "trello", "obs",
+        "photoshop", "illustrator", "figma",
+        "calculadora", "bloco de notas", "painel de controle",
+        "chatgpt", "youtube", "netflix", "prime video", "twitch", "instagram", "twitter"
+    ],
+    "phonetic_map": {
+        "já vi": "jarvis", "já vos": "jarvis", "chaves": "jarvis", 
+        "jardim": "jarvis", "jarbas": "jarvis", "james": "jarvis", 
+        "davis": "jarvis", "jacques": "jarvis", "serviço": "jarvis",
+        "travis": "jarvis", "elvis": "jarvis", "jairo": "jarvis",
+        "já": "jarvis", "hi": "jarvis", "oi": "jarvis", "olá": "jarvis",
+        "jar": "jarvis", "vis": "jarvis", "joia": "jarvis",
+        
+        "buried": "abrir", "bored": "abrir", "abre": "abrir", "ligar": "abrir",
+        "executar": "abrir", "iniciar": "abrir", "rodar": "abrir",
+        "happy": "abrir", "boutique": "abrir",
+        "toca": "tocar", "bota": "tocar", "ponha": "tocar",
+        "play": "tocar",
+        
+        "pai": "spotify", "spot": "spotify", "sport": "spotify", 
+        "esportes": "spotify", "esporte": "spotify", "spotifai": "spotify", 
+        "ispotifai": "spotify", "esposa": "spotify", "happy spotify": "abrir spotify",
+        
+        "zap": "whatsapp", "whats": "whatsapp", "what's up": "whatsapp", "uats": "whatsapp",
+        "tele": "telegram", "gram": "telegram",
+        
+        "chroma": "chrome", "google": "chrome", "crome": "chrome", "crômi": "chrome",
+        "raposa": "firefox", "fire": "firefox", "fogo": "firefox",
+        "ed": "edge", "borda": "edge",
+        
+        "lixo": "league of legends", "lol": "league of legends", "lolzinho": "league of legends",
+        "vapor": "steam", "sting": "steam", "istim": "steam",
+        "vither": "the witcher", "bruxo": "the witcher", "uitcher": "the witcher",
+        "clash": "clash royale", "royale": "clash royale",
+        
+        "código": "code", "visual": "code", "vs": "code", "codi": "code", "vsc": "code",
+        "estúdio": "visual studio",
+        "power": "powershell", "sheu": "powershell",
+        "giti": "git", "hub": "github",
+        "dôquer": "docker", "doc": "docker",
+        
+        "uordi": "word", "palavra": "word",
+        "eksel": "excel", "exel": "excel", "planilha": "excel",
+        "powerpoint": "powerpoint", "apresentação": "powerpoint", "slid": "powerpoint",
+        "notas": "bloco de notas", "anotações": "bloco de notas", "notepad": "bloco de notas",
+        
+        "chat": "chatgpt", "gpt": "chatgpt", "gepeto": "chatgpt", "ia": "chatgpt",
+        "tub": "youtube", "yutubi": "youtube", "vídeo": "youtube",
+        "net": "netflix", "netiflix": "netflix", "filme": "netflix",
+        "insta": "instagram", "grama": "instagram"
+    }
+}

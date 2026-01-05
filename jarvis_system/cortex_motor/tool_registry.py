@@ -1,9 +1,9 @@
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Any
 from dataclasses import dataclass
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
-# Inicializa logger específico para o Cortex Motor
-log = JarvisLogger(__name__)
+# Padronização do nome do logger
+log = JarvisLogger("MOTOR_REGISTRY")
 
 @dataclass
 class ToolDefinition:
@@ -11,23 +11,23 @@ class ToolDefinition:
     name: str
     description: str
     func: Callable
-    safe_mode: bool = True  # Se True, não exige aprovação humana (futuro)
+    safe_mode: bool = True 
 
 class ToolRegistry:
     """
     Gerenciador central de capacidades do Jarvis.
-    Padrão: Singleton Registry.
+    Singleton Registry.
     """
     def __init__(self):
         self._tools: Dict[str, ToolDefinition] = {}
 
     def register(self, name: str, description: str, safe_mode: bool = True):
         """
-        Decorator para registrar funções como ferramentas do Jarvis.
+        Decorator para registrar funções como ferramentas.
         """
         def decorator(func: Callable):
             if name in self._tools:
-                log.warning(f"Sobrescrevendo ferramenta existente: {name}")
+                log.warning(f"⚠️ Sobrescrevendo ferramenta: {name}")
             
             self._tools[name] = ToolDefinition(
                 name=name,
@@ -35,35 +35,34 @@ class ToolRegistry:
                 func=func,
                 safe_mode=safe_mode
             )
-            log.debug(f"Ferramenta registrada: '{name}'")
+            # Log nível DEBUG para não poluir o startup
+            log.debug(f"🔧 Ferramenta registrada: '{name}'")
             return func
         return decorator
 
     def list_tools(self) -> list[str]:
-        """Retorna lista de nomes de ferramentas disponíveis."""
         return list(self._tools.keys())
 
     def execute(self, tool_name: str, **kwargs) -> Any:
         """
-        Executa uma ferramenta de forma controlada e auditada.
+        Executa uma ferramenta blindada contra falhas.
+        Retorna sempre uma string ou dado seguro, nunca explode exceção.
         """
         if tool_name not in self._tools:
-            log.error(f"Tentativa de execução de ferramenta inexistente: {tool_name}")
-            raise ValueError(f"Ferramenta '{tool_name}' não encontrada no registro.")
+            log.error(f"Tentativa de execução de ferramenta fantasma: {tool_name}")
+            return f"Erro: A ferramenta '{tool_name}' não está registrada."
 
         tool = self._tools[tool_name]
         
         try:
-            log.info(f"Iniciando execução: {tool_name}", params=kwargs)
-            # Aqui, no futuro, entraremos com validação de tipos via Pydantic
+            log.info(f"🚀 Executando: {tool_name} {kwargs if kwargs else ''}")
             result = tool.func(**kwargs)
-            log.info(f"Execução finalizada: {tool_name}")
             return result
         
         except Exception as e:
-            # Captura a falha, loga o contexto e re-lança para o Orchestrator decidir
-            log.error(f"Falha crítica na ferramenta {tool_name}", error=str(e))
-            raise e
+            # Captura a falha para que o Jarvis possa verbalizar o erro em vez de morrer
+            log.error(f"❌ Falha crítica na ferramenta {tool_name}: {e}")
+            return f"Falha ao executar {tool_name}."
 
-# Instância global do registro
+# Instância global
 registry = ToolRegistry()

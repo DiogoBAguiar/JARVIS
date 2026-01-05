@@ -1,145 +1,161 @@
 import os
 import time
+import datetime
+from typing import Optional
 from groq import Groq
 import ollama
 
 # Imports do Sistema
 from jarvis_system.cortex_frontal.observability import JarvisLogger
-# Importa o gerenciador de memória vetorial
-from jarvis_system.hipocampo.memoria import memoria 
 
-log = JarvisLogger("CORTEX_HYBRID_BRAIN")
+log = JarvisLogger("CORTEX_BRAIN")
 
-# Configurações de Modelo
-MODELO_NUVEM = os.getenv("JARVIS_MODEL_CLOUD", "llama-3.3-70b-versatile")
-MODELO_LOCAL = os.getenv("JARVIS_MODEL_LOCAL", "qwen2:0.5b") # Leve e rápido para fallback
+# Tenta importar memória de forma segura
+try:
+    from jarvis_system.hipocampo.memoria import memoria
+except ImportError:
+    log.warning("Hipocampo (Memória) não encontrado ou falhou ao carregar.")
+    memoria = None
 
 class HybridBrain:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.client_groq = None
+        self.model_cloud = os.getenv("JARVIS_MODEL_CLOUD", "llama-3.3-70b-versatile")
+        self.model_local = os.getenv("JARVIS_MODEL_LOCAL", "qwen2:0.5b")
         
-        # Inicialização Segura do Cliente Nuvem
+        self.client_groq: Optional[Groq] = None
+        self._initialize_cloud()
+
+    def _initialize_cloud(self):
+        """Conexão lazy/resiliente com a nuvem."""
         if self.api_key:
             try:
                 self.client_groq = Groq(api_key=self.api_key)
-                log.info(f"Córtex Superior (Groq) conectado. Modelo: {MODELO_NUVEM}")
+                log.info(f"☁️ Córtex Nuvem Conectado: {self.model_cloud}")
             except Exception as e:
-                log.error(f"Falha ao iniciar Córtex Superior: {e}")
+                log.error(f"❌ Erro ao conectar Groq: {e}")
         else:
-            log.warning("GROQ_API_KEY ausente. Modo LOBO SOLITÁRIO (Apenas Local) ativado.")
+            log.warning("⚠️ Modo Offline Forçado (Sem API Key).")
 
-        # Persona do Jarvis
-        self.system_prompt = (
-            "Você é o J.A.R.V.I.S., uma IA assistente avançada. "
-            "Responda em Português do Brasil. "
-            "Seja extremamente conciso, útil e levemente espirituoso. "
-            "Não invente fatos se não souber. Use o contexto fornecido como verdade absoluta."
+    @property
+    def _dynamic_system_prompt(self) -> str:
+        """Gera o prompt do sistema com contexto temporal atualizado."""
+        now = datetime.datetime.now()
+        data_str = now.strftime("%d/%m/%Y")
+        hora_str = now.strftime("%H:%M")
+        
+        return (
+            f"Você é J.A.R.V.I.S., uma IA assistente técnica e eficiente. "
+            f"Hoje é {data_str}, são {hora_str}. "
+            "Diretrizes: "
+            "1. Responda em Português do Brasil. "
+            "2. Seja direto, profissional e levemente sarcástico quando apropriado. "
+            "3. Não invente dados. Se não souber, diga que precisa pesquisar. "
+            "4. Respostas curtas são preferíveis para síntese de voz."
         )
 
     def pensar(self, texto_usuario: str) -> str:
-        """
-        Fluxo de Pensamento:
-        1. Hipocampo: Busca memórias relevantes (RAG).
-        2. Córtex Superior (Nuvem): Tenta processar com modelo SOTA.
-        3. Cérebro Reptiliano (Local): Fallback se a nuvem falhar.
-        """
+        """Processo Cognitivo: RAG -> Cloud -> Local Fallback"""
         start_time = time.time()
         
-        # 1. Recuperação de Memória (RAG)
-        contexto = self._recuperar_contexto(texto_usuario)
-        prompt_final = self._construir_prompt(texto_usuario, contexto)
-
+        # 1. Recuperação de Contexto (RAG)
+        contexto_rag = self._recuperar_memoria(texto_usuario)
+        
+        # 2. Construção do Prompt
+        prompt_final = self._montar_prompt_usuario(texto_usuario, contexto_rag)
+        
         resposta = ""
-        origem = ""
+        provider = "NENHUM"
 
-        # 2. Tentativa Nuvem (Prioridade)
+        # 3. Tentativa Nuvem
         if self.client_groq:
             try:
-                resposta = self._pensar_nuvem(prompt_final)
-                origem = "NUVEM"
+                resposta = self._inferencia_nuvem(prompt_final)
+                provider = f"NUVEM ({self.model_cloud})"
             except Exception as e:
-                log.warning(f"Córtex Superior falhou ({e}). Caindo para Local...")
-                # Fallback automático ocorre abaixo
-
-        # 3. Tentativa Local (Se NUVEM falhou ou não existe)
+                log.warning(f"Falha na Nuvem: {e}. Tentando local...")
+        
+        # 4. Fallback Local
         if not resposta:
-            resposta = self._pensar_local(prompt_final)
-            origem = "LOCAL"
+            try:
+                resposta = self._inferencia_local(prompt_final)
+                provider = f"LOCAL ({self.model_local})"
+            except Exception as e:
+                log.critical(f"Falha Cognitiva Total: {e}")
+                return "Meus sistemas lógicos falharam, senhor."
 
-        tempo_total = time.time() - start_time
-        log.info(f"Pensamento concluído via {origem} em {tempo_total:.2f}s")
+        latency = time.time() - start_time
+        log.info(f"🧠 Pensamento: {latency:.2f}s via {provider}")
         return resposta
 
     def ensinar(self, fato: str):
-        """
-        Método chamado pelo Orchestrator para salvar novas informações.
-        Corrigido de 'aprender' para 'ensinar' para manter consistência.
-        """
-        if not fato: return
-        log.info(f"Arquivando nova memória: {fato}")
+        """Interface para gravar memórias."""
+        if not memoria:
+            log.error("Hipocampo indisponível para gravação.")
+            return "Erro: Memória desativada."
+        
         try:
+            # Assumimos que o módulo memoria tem tratamento de erro interno
             return memoria.memorizar(fato)
         except Exception as e:
-            log.error(f"Erro ao gravar no Hipocampo: {e}")
-            return "Erro de memória."
+            log.error(f"Erro ao ensinar fato: {e}")
+            return "Falha na consolidação de memória."
 
-    def _recuperar_contexto(self, texto: str) -> str:
+    # --- MÉTODOS PRIVADOS (Auxiliares) ---
+
+    def _recuperar_memoria(self, query: str) -> str:
+        if not memoria: return ""
         try:
-            # Busca semanticamente no banco vetorial
-            memoria_recuperada = memoria.relembrar(texto)
-            if memoria_recuperada:
-                log.debug(f"Contexto injetado: {memoria_recuperada[:50]}...")
-                return memoria_recuperada
-            return ""
+            # Timeout conceitual (se a lib suportasse, usaríamos aqui)
+            dados = memoria.relembrar(query)
+            if dados:
+                return dados
         except Exception as e:
-            log.error(f"Erro no Hipocampo: {e}")
-            return ""
+            log.warning(f"RAG falhou, seguindo sem memória: {e}")
+        return ""
 
-    def _construir_prompt(self, usuario: str, contexto: str) -> str:
-        """Monta o prompt estruturado para reduzir alucinações."""
-        if not contexto:
-            return usuario
+    def _montar_prompt_usuario(self, query: str, context: str) -> str:
+        if not context:
+            return query
         
-        # Formato explícito para separar contexto da pergunta
         return (
-            f"Contexto recuperado da memória (use se relevante):\n"
-            f"{contexto}\n"
-            f"---------------------\n"
-            f"Usuário: {usuario}"
+            f"DADOS RECUPERADOS DA MEMÓRIA:\n{context}\n"
+            f"-----------------------------------\n"
+            f"USUÁRIO: {query}"
         )
 
-    def _pensar_nuvem(self, prompt: str) -> str:
-        completion = self.client_groq.chat.completions.create(
-            model=MODELO_NUVEM,
+    def _inferencia_nuvem(self, prompt: str) -> str:
+        if not self.client_groq: raise Exception("Cliente Groq não inicializado")
+        
+        chat = self.client_groq.chat.completions.create(
+            model=self.model_cloud,
             messages=[
-                {"role": "system", "content": self.system_prompt},
+                {"role": "system", "content": self._dynamic_system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3, # Baixa temperatura para fidelidade aos fatos/memória
-            max_tokens=300,
-            timeout=6.0 
+            temperature=0.3, # Focado e preciso
+            max_tokens=256,  # Respostas curtas para voz
+            timeout=5.0      # Fail fast: se demorar 5s, aborte e vá para local
         )
-        return completion.choices[0].message.content
+        return chat.choices[0].message.content
 
-    def _pensar_local(self, prompt: str) -> str:
-        log.info(f"Ativando modelo local {MODELO_LOCAL}...")
-        try:
-            response = ollama.chat(
-                model=MODELO_LOCAL, 
-                messages=[
-                    {'role': 'system', 'content': "Seja breve. PT-BR."},
-                    {'role': 'user', 'content': prompt},
-                ], 
-                options={
-                    "num_ctx": 2048, # Aumentado para caber o contexto RAG
-                    "temperature": 0.1
-                }
-            )
-            return response['message']['content']
-        except Exception as e:
-            log.critical(f"Falha Total: {e}")
-            return "Senhor, meus sistemas cognitivos estão offline."
+    def _inferencia_local(self, prompt: str) -> str:
+        # Ollama roda localmente, pode demorar, mas é garantido (se a RAM aguentar)
+        response = ollama.chat(
+            model=self.model_local,
+            messages=[
+                {"role": "system", "content": "Seja conciso. PT-BR."},
+                {"role": "user", "content": prompt}
+            ],
+            options={"temperature": 0.1, "num_predict": 128}
+        )
+        return response['message']['content']
 
-# Instanciação Singleton
-llm = HybridBrain()
+# --- INSTÂNCIA GLOBAL (SINGLETON) ---
+# Mantida para compatibilidade com orchestrator.py
+# Em um refactor futuro, o Kernel deveria injetar isso.
+try:
+    llm = HybridBrain()
+except Exception as e:
+    log.critical(f"FATAL: Não foi possível criar o Cérebro: {e}")
+    llm = None

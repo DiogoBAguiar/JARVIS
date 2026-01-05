@@ -1,60 +1,97 @@
 import os
 import random
+from typing import Optional
 from groq import Groq
-from jarvis_system.cortex_frontal.observability import JarvisLogger
-from jarvis_system.hipocampo.memoria import memoria
 
-log = JarvisLogger("CORTEX_SUBCONSCIENTE")
+# Imports do Sistema
+from jarvis_system.cortex_frontal.observability import JarvisLogger
+
+log = JarvisLogger("CORTEX_SUBCONSCIOUS")
+
+# Tentativa de importar memória sem quebrar o módulo
+try:
+    from jarvis_system.hipocampo.memoria import memoria
+except ImportError:
+    log.warning("Hipocampo inacessível. Subconsciente operará sem memória de longo prazo.")
+    memoria = None
 
 class CuriosityEngine:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
-        self.client = None
-        if self.api_key:
-            self.client = Groq(api_key=self.api_key)
+        self.model = "llama-3.3-70b-versatile"
+        self.client: Optional[Groq] = None
         
-        # Este prompt define a "Outra IA" que você pediu.
-        # Ela não é servil, ela é analítica e curiosa.
+        if self.api_key:
+            try:
+                self.client = Groq(api_key=self.api_key)
+            except Exception as e:
+                log.error(f"Erro ao inicializar cliente Groq: {e}")
+
+        # Persona focada em engajamento social
         self.system_prompt = (
-            "Você é o Módulo de Curiosidade do JARVIS. "
-            "Sua função NÃO é responder o usuário, mas sim descobrir o que falta aprender sobre ele. "
-            "Analise o contexto e gere UMA ÚNICA pergunta curta e casual para extrair informações úteis "
-            "(hobbies, rotinas, preferências, trabalho, sonhos). "
-            "Seja natural, como um amigo querendo conhecer o outro. Fale em PT-BR."
+            "Você é o 'Instinto de Curiosidade' de uma IA. "
+            "Sua tarefa é gerar UMA pergunta curta (máx 10 palavras) para manter a conversa viva. "
+            "Diretrizes: "
+            "1. Baseie-se no tópico atual. "
+            "2. Seja casual e pessoal (ex: 'E você, curte isso?', 'Já tentou fazer...?'). "
+            "3. Se o usuário der uma ordem direta, NÃO pergunte nada (retorne vazio). "
+            "4. Saída: APENAS a pergunta, sem aspas ou introduções."
         )
 
-    def gerar_pergunta(self, contexto_atual: str) -> str:
+    def gerar_pergunta(self, contexto_usuario: str) -> str:
         """
-        Analisa o papo atual e decide uma pergunta para aprofundar o conhecimento.
+        Gera uma pergunta de follow-up.
+        Timeout agressivo: Se demorar, desiste para não travar a conversa.
         """
         if not self.client: return ""
-
-        # Recupera memórias antigas para não perguntar o que já sabe
-        memoria_existente = memoria.relembrar("quem sou eu fatos sobre mim preferencias")
         
-        prompt = (
-            f"O QUE JÁ SEI SOBRE O USUÁRIO:\n{memoria_existente}\n\n"
-            f"CONVERSA ATUAL: {contexto_atual}\n\n"
-            f"MISSÃO: Com base no que eu já sei (ou não sei), faça uma pergunta para aprender algo novo sobre o usuário. "
-            f"A pergunta deve fazer sentido com a conversa atual ou ser uma curiosidade aleatória se o papo estiver morno."
-        )
+        # Filtro Heurístico: Comandos curtos ou imperativos não merecem curiosidade
+        # Ex: "Ligar luz", "Que horas são", "Pare".
+        if len(contexto_usuario.split()) < 3:
+            return ""
 
         try:
-            log.info("Analisando lacunas de conhecimento...")
+            # Recuperação Leve de Memória (Opcional)
+            contexto_memoria = ""
+            if memoria:
+                # Busca rápida apenas para não repetir perguntas óbvias
+                # Limitamos a 1 resultado para ser rápido
+                contexto_memoria = memoria.relembrar(contexto_usuario, limit=1)
+
+            prompt = (
+                f"MEMÓRIA RELACIONADA (Evite perguntar o que já está aqui): {contexto_memoria}\n"
+                f"FALA DO USUÁRIO: {contexto_usuario}\n"
+                f"----------------\n"
+                f"Sua pergunta (ou vazio se não couber):"
+            )
+
+            # Chamada com Timeout Curto (1.5s)
+            # A curiosidade não pode atrasar a resposta principal.
             completion = self.client.chat.completions.create(
-                model="llama-3.3-70b-versatile", # Usamos o modelo potente para ter "sacadas" inteligentes
+                model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7, # Criatividade mais alta para variar as perguntas
-                max_tokens=60
+                temperature=0.8, # Alta criatividade
+                max_tokens=40,   # Resposta curtíssima
+                timeout=1.5      # Fail Fast
             )
-            pergunta = completion.choices[0].message.content.replace('"', '')
+            
+            pergunta = completion.choices[0].message.content.strip().replace('"', '')
+            
+            # Filtro de qualidade básico
+            if len(pergunta) < 3 or "não" in pergunta.lower()[:5]: 
+                return ""
+
+            log.info(f"💡 Insight: '{pergunta}'")
             return pergunta
+
         except Exception as e:
-            log.error(f"Falha na curiosidade: {e}")
+            # Erros aqui são esperados (timeout) e devem ser ignorados silenciosamente
+            # para não sujar o log principal, a menos que seja debug.
+            log.debug(f"Subconsciente silenciado: {e}")
             return ""
 
-# Singleton
+# Instância Global
 curiosity = CuriosityEngine()
