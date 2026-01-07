@@ -20,49 +20,63 @@
         "chatgpt", "youtube", "netflix", "prime video", "twitch", "instagram", "twitter"
     ],
     "phonetic_map": {
+        "de árvores": "jarvis", "das árvores": "jarvis", "árvores": "jarvis",
         "já vi": "jarvis", "já vos": "jarvis", "chaves": "jarvis", 
         "jardim": "jarvis", "jarbas": "jarvis", "james": "jarvis", 
-        "davis": "jarvis", "jacques": "jarvis", "serviço": "jarvis",
+        "davis": "jarvis", "jacques": "jarvis", "serviço": "jarvis", "services": "jarvis",
         "travis": "jarvis", "elvis": "jarvis", "jairo": "jarvis",
+        "javes": "jarvis", "javis": "jarvis", "jarves": "jarvis", "jabs": "jarvis",
+        "jerry's": "jarvis", "drivers": "jarvis", "harvest": "jarvis", "gyrus": "jarvis",
         "já": "jarvis", "hi": "jarvis", "oi": "jarvis", "olá": "jarvis",
-        "jar": "jarvis", "vis": "jarvis", "joia": "jarvis",
+        "jar": "jarvis", "vis": "jarvis", "joia": "jarvis", "jovis": "jarvis",
+        "diavis": "jarvis", "diaves": "jarvis", "jerry": "jarvis",
+        "de aves": "jarvis", "das aves": "jarvis",
         
         "buried": "abrir", "bored": "abrir", "abre": "abrir", "ligar": "abrir",
         "executar": "abrir", "iniciar": "abrir", "rodar": "abrir",
-        "happy": "abrir", "boutique": "abrir",
+        "happy": "abrir", "boutique": "abrir", "abri-se": "abrir", "every": "abrir",
+        "operate": "abrir", "abril": "abrir", "a brir": "abrir",
         "toca": "tocar", "bota": "tocar", "ponha": "tocar",
-        "play": "tocar",
+        "play": "tocar", "talker": "tocar", "token": "tocar",
         
-        "pai": "spotify", "spot": "spotify", "sport": "spotify", 
+        "pai": "spotify", "spot": "spotify", "sport": "spotify", "sporty": "spotify",
         "esportes": "spotify", "esporte": "spotify", "spotifai": "spotify", 
-        "ispotifai": "spotify", "esposa": "spotify", "happy spotify": "abrir spotify",
+        "ispotifai": "spotify", "esposa": "spotify", "spofity": "spotify",
         
         "zap": "whatsapp", "whats": "whatsapp", "what's up": "whatsapp", "uats": "whatsapp",
-        "tele": "telegram", "gram": "telegram",
+        "tele": "telegram", "gram": "telegram", "telly": "telegram",
         
-        "chroma": "chrome", "google": "chrome", "crome": "chrome", "crômi": "chrome",
+        "chroma": "chrome", "google": "chrome", "crome": "chrome", "crômi": "chrome", "crown": "chrome",
         "raposa": "firefox", "fire": "firefox", "fogo": "firefox",
         "ed": "edge", "borda": "edge",
         
         "lixo": "league of legends", "lol": "league of legends", "lolzinho": "league of legends",
-        "vapor": "steam", "sting": "steam", "istim": "steam",
+        "vapor": "steam", "sting": "steam", "istim": "steam", "stream": "steam",
         "vither": "the witcher", "bruxo": "the witcher", "uitcher": "the witcher",
         "clash": "clash royale", "royale": "clash royale",
         
         "código": "code", "visual": "code", "vs": "code", "codi": "code", "vsc": "code",
-        "estúdio": "visual studio",
+        "estúdio": "visual studio", "vasco": "vs code", "fiasco": "vs code",
         "power": "powershell", "sheu": "powershell",
-        "giti": "git", "hub": "github",
-        "dôquer": "docker", "doc": "docker",
+        "giti": "git", "hub": "github", "get": "git",
+        "dôquer": "docker", "doc": "docker", "doctor": "docker",
         
-        "uordi": "word", "palavra": "word",
-        "eksel": "excel", "exel": "excel", "planilha": "excel",
-        "powerpoint": "powerpoint", "apresentação": "powerpoint", "slid": "powerpoint",
+        "uordi": "word", "palavra": "word", "ward": "word", "world": "word",
+        "eksel": "excel", "exel": "excel", "planilha": "excel", "xo": "excel",
+        "powerpoint": "powerpoint", "apresentação": "powerpoint", "slid": "powerpoint", "point": "powerpoint",
         "notas": "bloco de notas", "anotações": "bloco de notas", "notepad": "bloco de notas",
         
         "chat": "chatgpt", "gpt": "chatgpt", "gepeto": "chatgpt", "ia": "chatgpt",
-        "tub": "youtube", "yutubi": "youtube", "vídeo": "youtube",
+        "tub": "youtube", "yutubi": "youtube", "vídeo": "youtube", "you": "youtube",
         "net": "netflix", "netiflix": "netflix", "filme": "netflix",
-        "insta": "instagram", "grama": "instagram"
+        "insta": "instagram", "grama": "instagram",
+        
+        "clímax": "clima", "cleaner": "clima", "climber": "clima",
+        "valume": "volume", "value me": "volume",
+        "pouse": "pausa", "palsy": "pausa", "house": "pausa",
+        "próxima": "próxima", "skip": "pule",
+        "back": "voltar", "beck": "voltar"
+
+        
     }
 }
