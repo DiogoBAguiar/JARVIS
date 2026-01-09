@@ -5,6 +5,7 @@ import json
 import re
 import urllib.parse
 import os
+import pygetwindow as gw
 from .base_agente import AgenteEspecialista
 
 try:
@@ -13,134 +14,170 @@ except ImportError:
     llm = None
 
 # ==============================================================================
-# CAMADA 1: NLU (Interpretação e Correção Fonética)
+# CAMADA 1: NLU (Agora com Inteligência Real)
 # ==============================================================================
 class SpotifyNLU:
-    def _aplicar_correcoes_locais(self, texto: str) -> str:
-        texto = texto.lower()
-        # Dicionário expandido com os erros do Whisper
-        correcoes = {
-            "30 pra 1": "30PRAUM",
-            "30 para 1": "30PRAUM",
-            "3-1": "30PRAUM",      # <--- O erro do seu log
-            "3 1": "30PRAUM",
-            "31": "30PRAUM",       # <--- Variação comum
-            "trinta pra um": "30PRAUM",
-            "frejilso": "Frei Gilson",
-            "frey gilson": "Frei Gilson", # <--- O erro do seu log
-            "legião": "Legião Urbana"
-        }
-        
-        # Substituição exata ou parcial
-        for erro, correcao in correcoes.items():
-            # Verifica se o erro está no texto (com espaços em volta para não quebrar palavras)
-            if erro in texto:
-                texto = texto.replace(erro, correcao)
-                
-        return texto.upper() if "30PRAUM" in texto.upper() else texto
-
     def analisar(self, comando: str) -> dict:
-        comando_limpo = self._aplicar_correcoes_locais(comando)
+        # Atalhos rápidos locais (para não gastar token com coisas óbvias)
+        comando_lower = comando.lower()
+        if comando_lower in ["voltar a tocar", "continue", "resume", "solta o som", "play"]:
+            return {"intent": "RESUME"}
         
-        if not llm:
-            return self._fallback_regras(comando_limpo)
+        if any(w in comando_lower for w in ["pausa", "pare", "stop", "silencio", "parar"]):
+            return {"intent": "PAUSE"}
 
+        # Se não é comando simples, DELEGAMOS AO CÉREBRO (Groq)
+        if not llm: return self._fallback_busca(comando)
+
+        # --- O NOVO PROMPT CORRETOR ---
         prompt = f"""
-        [ROLE]
-        Especialista Spotify.
-        [INPUT] "{comando_limpo}"
-        [OUTPUT JSON] {{ "intent": "PLAY", "query": "TERMO", "type": "ARTIST"|"TRACK" }}
+        Você é um especialista em música e API do Spotify.
+        Analise o comando de voz do usuário, que pode conter erros fonéticos.
+
+        INPUT DO USUÁRIO: "{comando}"
+
+        SUA MISSÃO:
+        1. Identifique a intenção: PLAY_SEARCH (buscar), RESUME, PAUSE, NEXT, PREVIOUS.
+        2. CORRIJA nomes de artistas/músicas. Ex: "Frigilson" -> "Frei Gilson", "Nirvava" -> "Nirvana", "30 pra 1" -> "30PRAUM".
+        3. Retorne APENAS o JSON.
+
+        JSON OUTPUT FORMAT:
+        {{
+            "intent": "PLAY_SEARCH",
+            "query": "Nome Corrigido do Artista/Musica"
+        }}
         """
         try:
+            # Temperatura 0.1 para ele ser "criativo" na correção mas preciso no JSON
             resposta = llm.pensar(prompt).strip()
+            
+            # Extrai JSON caso o LLM fale algo antes
             match = re.search(r'\{.*\}', resposta, re.DOTALL)
-            if match: return json.loads(match.group())
-        except: pass
+            if match: 
+                dados = json.loads(match.group())
+                print(f"[NLU] Correção LLM: '{comando}' -> '{dados.get('query')}'")
+                return dados
+        except Exception as e:
+            print(f"[Erro NLU] {e}")
         
-        return self._fallback_regras(comando_limpo)
+        return self._fallback_busca(comando)
 
-    def _fallback_regras(self, comando: str) -> dict:
-        if any(w in comando.lower() for w in ["pausa", "parar"]): return {"intent": "PAUSE"}
-        if "proxima" in comando.lower(): return {"intent": "NEXT"}
+    def _fallback_busca(self, comando: str) -> dict:
         termo = comando.replace("tocar", "").replace("spotify", "").strip()
-        return {"intent": "PLAY", "query": termo, "type": "ARTIST"}
+        if not termo: return {"intent": "RESUME"}
+        return {"intent": "PLAY_SEARCH", "query": termo}
 
 # ==============================================================================
-# CAMADA 2: CONTROLLER (Visão Turbinada)
+# CAMADA 2: CONTROLLER (Com Foco Forçado)
 # ==============================================================================
 class SpotifyController:
-    def _tentar_clique_visual(self):
-        """
-        Tenta achar o botão verde de duas formas:
-        1. Colorido (Preciso)
-        2. Grayscale (Ignora mudanças de fundo do Spotify)
-        """
-        base_dir = os.getcwd()
-        img_path = os.path.join(base_dir, "img", "play_spotify.png")
-        
-        if not os.path.exists(img_path):
-            return False
+    def __init__(self):
+        self.base_dir = os.getcwd()
+        self.img_play = os.path.join(self.base_dir, "img", "play_spotify.png")
 
-        print("[Visual] Escaneando tela por botão verde...")
-        
+    def _forcar_foco_janela(self):
+        """
+        Truque para burlar a proteção de foco do Windows.
+        Se a janela estiver escondida, ele minimiza e restaura para forçar o topo.
+        """
         try:
-            # TENTATIVA 1: Modo Colorido (Confidence 0.7)
-            botao = pyautogui.locateCenterOnScreen(img_path, confidence=0.7)
-            if botao:
-                print(f"[Visual] ALVO LOCALIZADO (Cor) em {botao}. Clicando.")
-                pyautogui.click(botao.x, botao.y)
-                return True
-                
-            # TENTATIVA 2: Modo Grayscale (Ignora o fundo colorido do álbum)
-            print("[Visual] Tentando modo Grayscale...")
-            botao = pyautogui.locateCenterOnScreen(img_path, confidence=0.6, grayscale=True)
-            if botao:
-                print(f"[Visual] ALVO LOCALIZADO (Grayscale) em {botao}. Clicando.")
-                pyautogui.click(botao.x, botao.y)
-                return True
-                
-        except Exception:
-            pass
+            janelas = gw.getWindowsWithTitle('Spotify')
+            validas = [w for w in janelas if "Spotify" in w.title] # Filtro mais robusto
             
+            if validas:
+                win = validas[0]
+                
+                # Se já estiver ativa, não faz nada (evita piscar a tela)
+                if win.isActive:
+                    return win
+
+                print(f"[Janela] Forçando foco em: {win.title}")
+                
+                # O Truque do Windows:
+                if win.isMinimized:
+                    win.restore()
+                else:
+                    # Minimizar e Restaurar força o Z-Order (traz para frente de tudo)
+                    win.minimize()
+                    time.sleep(0.1)
+                    win.restore()
+                
+                win.activate()
+                time.sleep(0.5) # Tempo para a animação do Windows terminar
+                return win
+        except Exception as e:
+            print(f"[Erro Janela] {e}")
+        return None
+
+    def _clicar_botao_verde(self, win):
+        print("[Visual] Buscando botão verde...")
+        try:
+            start = time.time()
+            # Procura por 4 segundos (aumentei o tempo pois a janela pode estar animando)
+            while time.time() - start < 4.0:
+                # grayscale=False é importante pois o botão é VERDE característico
+                botoes = list(pyautogui.locateAllOnScreen(self.img_play, confidence=0.8, grayscale=False))
+                
+                for btn in botoes:
+                    cy = btn.top + (btn.height / 2)
+                    # Filtra botão do rodapé (Player) - ignora os 15% inferiores
+                    if cy < (win.top + win.height * 0.85):
+                        centro = pyautogui.center(btn)
+                        print(f"[Visual] ✨ ACHEI! Clicando em {centro}")
+                        pyautogui.click(centro.x, centro.y)
+                        return True
+                time.sleep(0.3)
+        except Exception as e:
+            print(f"[Visual Falhou] {e}") # Não cracha, apenas avisa
+        
         return False
 
-    def play(self, query: str):
-        print(f"[SpotifyController] Executando estratégia para: {query}")
+    def play_search(self, query: str):
+        print(f"[Controller] Buscando: {query}")
         
-        # 1. Busca
+        # 1. Abre via Link (Isso geralmente já foca o app)
         link = f"spotify:search:{urllib.parse.quote(query)}"
         webbrowser.open(link)
-        time.sleep(4.5) 
+        time.sleep(3.0) 
         
-        # 2. Reset de Foco
-        largura, altura = pyautogui.size()
-        pyautogui.click(largura / 2, altura / 2)
-        
-        # 3. Entrar no Resultado (Esc -> Tab -> Enter)
-        pyautogui.press('esc')
-        time.sleep(0.2)
-        pyautogui.press('tab')
-        time.sleep(0.2)
-        pyautogui.press('enter')
-        
-        time.sleep(2.5) # Espera carregar a página interna
-        
-        # 4. TENTA VISÃO
-        if self._tentar_clique_visual():
-            print("[Sucesso] Reprodução iniciada via Visão Computacional.")
+        # 2. Garante que está VISÍVEL (Foco Forçado)
+        win = self._forcar_foco_janela()
+        if not win: 
+            print("[Erro] Não encontrei a janela do Spotify.")
             return
 
-        # 5. FALLBACK CEGO
-        print("[Visual] Falhou. Tentando modo cego.")
-        pyautogui.click(largura * 0.3, altura * 0.4) 
-        time.sleep(0.5)
-        pyautogui.press('enter')
-        time.sleep(0.5)
+        # 3. Visão Computacional
+        if os.path.exists(self.img_play):
+            if self._clicar_botao_verde(win): return
+        else:
+            print(f"[Aviso] Imagem {self.img_play} não existe.")
+
+        # 4. Fallback (Navegação Cega)
+        print("[Navegação] Modo Cego: Tab+Enter.")
+        
+        # Clica no centro para garantir foco do input
+        pyautogui.click(win.left + win.width//2, win.top + win.height//3)
+        time.sleep(0.2)
+        
+        pyautogui.press('tab')
+        time.sleep(0.1)
+        pyautogui.press('enter') 
+
+    def resume(self):
+        self._forcar_foco_janela()
+        pyautogui.press('space') 
+
+    def pause(self):
+        self._forcar_foco_janela()
         pyautogui.press('space')
 
-    def pause(self): pyautogui.press("playpause")
-    def next_track(self): pyautogui.press("nexttrack")
-    def open_app(self): webbrowser.open("spotify:")
+    def next_track(self):
+        self._forcar_foco_janela()
+        pyautogui.hotkey('ctrl', 'right')
+
+    def previous_track(self):
+        self._forcar_foco_janela()
+        pyautogui.hotkey('ctrl', 'left')
 
 # ==============================================================================
 # CAMADA 3: AGENTE
@@ -152,28 +189,30 @@ class AgenteSpotify(AgenteEspecialista):
 
     @property
     def nome(self): return "spotify"
-
+    
     @property
-    def gatilhos(self):
-        return ["spotify", "tocar", "ouvir", "play", "som", "musica", "banda", "artista"]
+    def gatilhos(self): 
+        return ["spotify", "tocar", "ouvir", "play", "som", "musica", "pausa", "pare", "stop", "silencio", "voltar"]
 
     def executar(self, comando: str, **kwargs) -> str:
         dados = self.nlu.analisar(comando)
         intencao = dados.get("intent")
         query = dados.get("query", "")
         
-        if intencao == "PLAY":
-            self.controller.play(query)
-            return f"Tocando: {query}"
-        
+        if intencao == "PLAY_SEARCH":
+            self.controller.play_search(query)
+            return f"Buscando {query}."
+        elif intencao == "RESUME":
+            self.controller.resume()
+            return "Ok."
         elif intencao == "PAUSE":
             self.controller.pause()
             return "Pausado."
         elif intencao == "NEXT":
             self.controller.next_track()
             return "Próxima."
-        elif intencao == "OPEN":
-            self.controller.open_app()
-            return "Spotify aberto."
+        elif intencao == "PREVIOUS":
+            self.controller.previous_track()
+            return "Anterior."
             
         return "Comando não entendido."

@@ -1,129 +1,148 @@
-J.A.R.V.I.S. (Just A Rather Very Intelligent System)
-Assistente Virtual Modular com Arquitetura Biomimética e Visão Computacional.
+# J.A.R.V.I.S. (Just A Rather Very Intelligent System)
+### Arquitetura Cognitiva Modular Híbrida com Visão Computacional
 
-O J.A.R.V.I.S. é um assistente pessoal avançado desenvolvido em Python, projetado para controlar o sistema operacional, gerenciar mídia e executar tarefas complexas através de comandos de voz naturais. Diferente de bots simples, ele utiliza uma arquitetura inspirada no cérebro humano (Córtex, Broca, Hipocampo) e integra LLMs (Llama 3.3) com Visão Computacional (OpenCV) para interagir com interfaces gráficas sem APIs públicas.
+O **J.A.R.V.I.S.** é um assistente pessoal avançado, projetado com uma arquitetura biomimética inspirada no cérebro humano. Diferente de bots lineares, ele opera sobre um **Barramento de Eventos (Event-Driven)**, permitindo processamento assíncrono, resiliência a falhas e raciocínio híbrido (Nuvem + Local).
 
-🧠 Arquitetura do Sistema
-O projeto segue uma estrutura modular baseada em biologia cognitiva:
+O sistema integra LLMs modernos (Llama 3 via Groq e Ollama Local), Visão Computacional e controlo de sistema operacional, orquestrados por um Kernel em Python.
 
-Cortex Frontal (Orquestrador): O "gerente" do sistema. Recebe a intenção do usuário, decide qual especialista chamar e gerencia o fluxo de execução.
+---
 
-Cortex Brain (LLM): O centro de raciocínio. Utiliza modelos de linguagem (Llama 3.3-70b via Groq) para entender contexto, realizar conversas complexas e estruturar dados (JSON) para os agentes.
+## 🧠 Arquitetura do Sistema (Biomimética v2)
 
-Área de Broca (Input/Output):
+O projeto foi refatorado para eliminar acoplamento direto, utilizando um sistema de **Pub/Sub** global.
 
-Broca Ears: Subsistema de audição powered by OpenAI Whisper. Possui filtros de ruído (Noise Gate) e detecção de voz.
+### 1. Córtex Frontal (Orquestração & Decisão)
+* **Orchestrator (`orchestrator.py`):** O "Gerente". Avalia intenções, gere a Janela de Atenção e decide se o input requer uma ferramenta, memória ou conversa livre.
+* **Hybrid Brain (`brain_llm.py`):** Motor de inferência com estratégia de **Fallback Inteligente**:
+    1.  Tenta **Nuvem** (Groq/Llama-3.3-70b) para velocidade e precisão.
+    2.  Em caso de falha/offline, assume **Local** (Ollama/Qwen/Llama3) automaticamente.
+* **Event Bus (`event_bus.py`):** A "medula espinhal". Desacopla os sensores (Ouvido) dos atuadores (Fala/Apps), permitindo que o sistema "pense" sem bloquear a escuta.
 
-Broca Voice: Subsistema de fala utilizando síntese neural de alta qualidade (ex: Azure TTS / Edge TTS).
+### 2. Área de Broca (Input/Output)
+* **Listen (`listen.py`):**
+    * Reconhecimento de fala via **Faster-Whisper** (Local).
+    * Processamento de sinal com `numpy` e `noisereduce`.
+    * **Intention Normalizer:** Filtra alucinações do Whisper e aplica correções fonéticas aprendidas (Memória de Reflexos).
+* **Speak (`speak.py`):** Síntese de voz neural (Edge-TTS) e reprodução assíncrona.
 
-Hipocampo (Memória): Banco de dados vetorial (ChromaDB) para memória de longo prazo e contexto.
+### 3. Hipocampo (Memória)
+* **Memória Episódica (`memoria.py`):** Banco vetorial (**ChromaDB**) para armazenar factos e conversas de longo prazo (RAG - Retrieval Augmented Generation).
+* **Reflexos (`reflexos.py`):** Memória associativa rápida para corrigir erros fonéticos recorrentes (ex: "tocasho" -> "tocar").
 
-Agentes Especialistas (Motor Registry): Módulos independentes para tarefas específicas (Spotify, Clima, Sistema, Calendário).
+### 4. Córtex Motor (Ação)
+* **Launcher (`launcher.py`):** Indexador inteligente que varre o Menu Iniciar e localiza executáveis ou URIs (Spotify, Steam, URLs).
+* **Agentes Especialistas:** Módulos de visão computacional (ex: Spotify Automation) e controlo de sistema.
 
-👁️ Destaque: Integração Spotify com Visão Computacional
-O agente do Spotify (agente_spotify.py) é um exemplo de Automação Híbrida:
+---
 
-NLU (Natural Language Understanding): Interpreta o comando (ex: "Tocar 30 pra 1") e classifica entre Track, Artist ou Playlist.
+## 🛠️ Stack Tecnológico
 
-Correção Fonética: Corrige erros comuns do reconhecimento de voz (ex: "3-1" -> "30PRAUM").
+* **Core:** Python 3.10+
+* **Arquitetura:** Event-Driven (Pub/Sub Pattern)
+* **IA & NLP:**
+    * Nuvem: `groq` (Llama 3.3 Versatile)
+    * Local: `ollama` (Qwen 2 / Llama 3)
+    * STT: `faster-whisper` (Substituindo Vosk/SpeechRecognition)
+* **Banco de Dados:** `chromadb` (Vector Store)
+* **Áudio:** `sounddevice` (Captura raw), `numpy`
+* **Visão/Automação:** `opencv-python`, `pyautogui`
 
-Visão Computacional (OpenCV):
+---
 
-Ao abrir páginas de Artistas/Playlists, o Jarvis escaneia a tela em busca do botão "Play" verde.
+## 📂 Estrutura do Projeto
 
-Possui modo Colorido e Grayscale (daltônico) para lidar com fundos dinâmicos do Spotify.
-
-Fallback Cego: Se a visão falhar, utiliza automação de teclado (Hotkeys) como backup.
-
-🛠️ Tecnologias Utilizadas
-Linguagem: Python 3.12+
-
-IA & NLP: groq (Llama 3.3), openai-whisper (Speech-to-Text).
-
-Automação & Visão: pyautogui, opencv-python, pygetwindow.
-
-Áudio: speechrecognition, pygame, pyaudio.
-
-Estrutura de Dados: json, re.
-
+```text
 J.A.R.V.I.S/
 │
-├── main.py                     # Ponto de entrada (Inicia o Kernel)
-├── requirements.txt            # Dependências (OpenCV, PyAutoGUI, etc.)
-├── .env                        # Chaves de API (Groq, OpenAI, etc.)
+├── main.py                     # Kernel: Bootstrap e Injeção de Dependências
+├── requirements.txt            # Dependências atualizadas
+├── .env                        # Credenciais (GROQ_API_KEY, etc.)
 │
-├── img/                        # Memória Visual (Assets para OpenCV)
-│   └── play_spotify.png        # Referência visual do botão Play verde
+├── data/                       # Persistência
+│   ├── jarvis_memory_db/       # Banco de dados ChromaDB
+│   └── speech_config.json      # Configurações de Hotwords e Reflexos
 │
-└── jarvis_system/              # Núcleo do Sistema
+└── jarvis_system/              # Núcleo Modular
     │
-    ├── protocol.py               # Loop principal e gestão de estado
+    ├── protocol.py             # Definição de Contratos de Eventos
     │
-    ├── cortex_frontal/         # Inteligência e Decisão
-    │   ├── brain_llm.py        # Integração com LLM (Llama 3.3)
-    │   └── orchestrator.py     # Lógica de decisão de fluxo
+    ├── cortex_frontal/
+    │   ├── orchestrator.py     # Lógica de Fluxo e Atenção
+    │   ├── brain_llm.py        # Gestor de LLMs (Híbrido)
+    │   ├── event_bus.py        # Barramento de Eventos (Pub/Sub)
+    │   └── observability.py    # Sistema de Logs Coloridos
     │
-    ├── subsistemas/ (ou raiz do system)
-    │   ├── broca_ears.py       # Audição (Whisper + Noise Gate)
-    │   ├── broca_voice.py      # Fala (TTS Neural)
-    │   └── hipocampo_reflexos.py # Memória rápida e atalhos
+    ├── area_broca/
+    │   ├── listen.py           # Whisper Service + VAD
+    │   └── speak.py            # TTS Service
     │
-    ├── motor/
-    │   ├── motor_registry.py   # Carregador de Agentes
-    │   └── motor_launcher.py   # Indexador de Programas do Windows
+    ├── hipocampo/
+    │   ├── memoria.py          # Interface ChromaDB
+    │   └── reflexos.py         # Aprendizado Rápido
     │
-    └── agentes_especialistas/  # Habilidades Específicas
-        ├── base_agente.py      # Classe base (Herança)
-        ├── agente_spotify.py   # Controlador Spotify (Híbrido: Visão + API)
-        ├── agente_clima.py     # Previsão do tempo
-        ├── agente_sistema.py   # Controle de volume e janelas
-        ├── agente_calendario.py# Agenda e compromissos
-        └── agente_media.py     # Controle genérico de mídia
+    └── cortex_motor/
+        ├── launcher.py         # Indexador de Apps e Web
+        └── tool_registry.py    # Registro de Ferramentas
+
 🚀 Instalação e Configuração
 1. Pré-requisitos
 Python 3.10 ou superior.
 
-Conta na Groq (para API Key do LLM).
+Ollama instalado e rodando (para modo offline/fallback).
 
-Spotify Desktop instalado.
+Chave de API da Groq.
 
-2. Instalação
-Clone o repositório e instale as dependências:
+2. Setup do Ambiente
 
-Bash
-
-git clone https://github.com/seu-usuario/jarvis-v2.git
+# Clone o repositório
+git clone [https://github.com/seu-usuario/jarvis-v2.git](https://github.com/seu-usuario/jarvis-v2.git)
 cd jarvis-v2
+
+# Crie o ambiente virtual
 python -m venv .venv
-# Windows
+
+# Ative o ambiente
+# Windows:
 .venv\Scripts\activate
-# Linux/Mac
+# Linux/Mac:
 source .venv/bin/activate
 
+# Instale as dependências
 pip install -r requirements.txt
-3. Configuração de Visão
-Para o agente do Spotify funcionar corretamente:
 
-Abra o Spotify Desktop.
+3. Configuração (.env)
+Crie um arquivo .env na raiz:
 
-Tire um print (Win + Shift + S) apenas do botão Play verde (círculo com triângulo).
-
-Salve a imagem como img/play_spotify.png na raiz do projeto.
+GROQ_API_KEY=gsk_sua_chave_aqui
+JARVIS_MODEL_CLOUD=llama-3.3-70b-versatile
+JARVIS_MODEL_LOCAL=qwen2:0.5b
 
 4. Execução
-Bash
-
 python main.py
-🎮 Comandos de Exemplo
-Música: "Jarvis, tocar 30 pra 1" (Correção automática para 30PRAUM).
 
-Música Específica: "Tocar a música Faroeste Caboclo".
+🎮 Funcionalidades e Comandos
+Modo Híbrido: Se a internet cair, o Jarvis avisa e muda para o modelo local (Ollama).
 
-Sistema: "Abrir navegador", "Volume 50%".
+Memória Viva: "Jarvis, memorize que o código do portão é 1234".
 
-Conversa: "Jarvis, quem foi Nikola Tesla?"
+Recuperação (RAG): "Qual é o código do portão?" (Busca no ChromaDB).
 
-⚠️ Solução de Problemas Comuns
-Jarvis não clica no botão: Verifique se a imagem img/play_spotify.png existe e foi recortada sem margens excessivas. O mouse não deve estar em cima do botão na hora do print.
+Aprendizado Ativo: Se ele entender errado, diga: "Aprenda que 'tocasho' significa 'tocar'". Ele guardará isso nos reflexos.
 
-Ouvido captando ruído: Ajuste o energy_threshold no arquivo broca_ears.py para ~3000.
+Apps: "Abrir Spotify", "Abrir VS Code", "Tocar 30PRAUM" (Spotify Agent).
+
+⚠️ Solução de Problemas
+Erro de Áudio (PortAudio): Se houver erro no sounddevice, verifique se o driver de microfone está definido como padrão no Windows.
+
+Memória Offline: Se o ChromaDB falhar, o sistema inicia em modo "Amnésia" (apenas reativo).
+
+Whisper Lento: A primeira execução baixa o modelo (~500MB). As seguintes são instantâneas.
+
+
+### Principais Alterações Realizadas:
+
+1.  **Atualização da Árvore de Arquivos:** Reflete a nova organização em `jarvis_system/` com a separação clara entre `cortex_frontal`, `area_broca`, etc.
+2.  **Destaque ao Event Bus:** Documentei a mudança crucial para uma arquitetura orientada a eventos, que não existia na versão anterior.
+3.  **Cérebro Híbrido:** Adicionei a explicação sobre o fallback entre Groq (Nuvem) e Ollama (Local), presente no código `brain_llm.py`.
+4.  **Memória & Reflexos:** Detalhei o uso do `ChromaDB` e a funcionalidade de correção fonética dinâmica (Reflexos) encontrada em `listen.py` e `reflexos.py`.
+5.  **Substituição de Bibliotecas:** Removi referências a `PyAudio` e `SpeechRecogn

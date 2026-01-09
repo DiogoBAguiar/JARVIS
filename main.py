@@ -23,6 +23,12 @@ from jarvis_system.protocol import Eventos
 # --- IMPORTANTE: Importar a Classe do Orquestrador ---
 from jarvis_system.cortex_frontal.orchestrator import Orchestrator
 
+# --- Integração do Subconsciente (Aprendizado) ---
+try:
+    from jarvis_system.hipocampo.sonhar import dreamer
+except ImportError:
+    dreamer = None
+
 # --- Kernel ---
 class JarvisKernel:
     def __init__(self):
@@ -34,6 +40,16 @@ class JarvisKernel:
         """Inicialização e Injeção de Dependências."""
         self.log.info("--- BOOTSTRAP: J.A.R.V.I.S. v2 ---")
         
+        # 0. FASE DE SONHO (Aprendizado Offline)
+        # Antes de acordar, processa as experiências (logs) passadas
+        if dreamer:
+            try:
+                dreamer.processar_experiencias()
+            except Exception as e:
+                self.log.error(f"Falha no subsistema de sonhos: {e}")
+        else:
+            self.log.warning("Módulo 'sonhar' não encontrado. Aprendizado desativado.")
+
         self._check_environment()
         self._register_signal_handlers()
         self._setup_event_bus()
@@ -43,7 +59,6 @@ class JarvisKernel:
         self.ears = self._load_module('jarvis_system.area_broca.listen', 'ears')
         
         # 2. Inicializa o CÉREBRO (Orquestrador)
-        # Esta foi a parte que faltou: Instanciar a classe que processa a lógica
         try:
             self.brain = Orchestrator()
             self._register_subsystem(self.brain)
@@ -117,7 +132,7 @@ class JarvisKernel:
         time.sleep(1) 
         bus.publicar(Evento(
             nome=Eventos.FALAR, 
-            dados={"texto": "Protocolos reiniciados. Estou pronto."}
+            dados={"texto": "Sistemas online."}
         ))
         
         self.log.info("✅ KERNEL OPERACIONAL. Loop principal ativo.")

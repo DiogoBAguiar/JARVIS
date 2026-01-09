@@ -1,116 +1,179 @@
 import os
 import uuid
 import datetime
-from typing import List, Optional
+import re
+import traceback
+from typing import Optional, Dict, Any, List
 
-# Logging do Sistema
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
 log = JarvisLogger("HIPOCAMPO")
 
-# Tentativa de importação segura do ChromaDB
 try:
     import chromadb
     from chromadb.config import Settings
     CHROMA_AVAILABLE = True
 except ImportError:
-    log.warning("⚠️ Biblioteca 'chromadb' não encontrada. Memória desativada.")
     CHROMA_AVAILABLE = False
+    log.warning("⚠️ 'chromadb' indisponível. Subsistema de memória desativado.")
+
 
 class Hipocampo:
-    def __init__(self):
-        # Configuração de Caminho: Garante que o DB fique na raiz do projeto
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        self.db_path = os.path.join(base_dir, "data", "jarvis_memory_db")
-        
-        self.client = None
-        self.collection = None
-        self._is_connected = False
+    """
+    Subsistema de Memória Vetorial Semântica.
+    Responsável apenas por:
+    - Persistência
+    - Recuperação
+    - Estado de conexão
+    """
+
+    COLLECTION_NAME = "jarvis_knowledge_base"
+
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or self._resolver_caminho_db()
+        self.client: Optional["chromadb.PersistentClient"] = None
+        self.collection: Optional["chromadb.Collection"] = None
+        self._is_connected: bool = False
+
+    # =======================
+    # Infraestrutura
+    # =======================
+
+    @staticmethod
+    def _resolver_caminho_db() -> str:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(base, "data", "jarvis_memory_db")
 
     def _conectar(self) -> bool:
-        """
-        Lazy Connection: Só conecta quando necessário.
-        Retorna True se conectado com sucesso.
-        """
-        if self._is_connected: return True
-        if not CHROMA_AVAILABLE: return False
+        if self._is_connected:
+            return True
 
-        log.info("🔌 Conectando ao Hipocampo (ChromaDB)...")
+        if not CHROMA_AVAILABLE:
+            return False
+
         try:
             os.makedirs(self.db_path, exist_ok=True)
 
-            # --- CORREÇÃO DO TYPO AQUI ---
-            # De: anonnymized_telemetry (Errado)
-            # Para: anonymized_telemetry (Correto)
             self.client = chromadb.PersistentClient(
                 path=self.db_path,
-                settings=Settings(allow_reset=True, anonymized_telemetry=False)
+                settings=Settings(
+                    allow_reset=True,
+                    anonymized_telemetry=False
+                )
             )
-            
+
             self.collection = self.client.get_or_create_collection(
-                name="episodic_memory",
+                name=self.COLLECTION_NAME,
                 metadata={"hnsw:space": "cosine"}
             )
-            
+
             self._is_connected = True
-            log.info(f"✅ Memória carregada. {self.collection.count()} registros ativos.")
+            log.info("✅ Hipocampo conectado ao ChromaDB.")
             return True
-        except Exception as e:
-            # Captura erro, mas não crita o programa inteiro, apenas desativa a memória
-            log.critical(f"🛑 FATAL: ❌ Falha crítica no ChromaDB: {e}")
+
+        except Exception as exc:
+            self._is_connected = False
+            log.critical(
+                f"🛑 Falha crítica ao inicializar ChromaDB: {type(exc).__name__} - {exc}"
+            )
+            log.debug(traceback.format_exc())
             return False
 
-    def memorizar(self, texto: str, tags: str = "fato_geral") -> str:
-        """Adiciona nova memória de longo prazo."""
+    # =======================
+    # Normalização & IDs
+    # =======================
+
+    @staticmethod
+    def _normalizar(texto: str, limite: int = 20) -> str:
+        return re.sub(r"[^a-zA-Z0-9]", "", texto).lower()[:limite]
+
+    def _gerar_id_track(self, musica: str, artista: str) -> str:
+        return (
+            f"tk_"
+            f"{self._normalizar(musica)}_"
+            f"{self._normalizar(artista)}_"
+            f"{uuid.uuid4().hex[:4]}"
+        )
+
+    # =======================
+    # Escrita
+    # =======================
+
+    def memorizar_musica(
+        self,
+        musica: str,
+        artista: str,
+        tags: str = "spotify_likes",
+        extra_info: Optional[Dict[str, Any]] = None
+    ) -> None:
         if not self._conectar():
-            return "Erro: Sistema de memória indisponível."
+            return
 
-        log.info(f"💾 Consolidando: '{texto}'")
-        try:
-            self.collection.add(
-                documents=[texto],
-                metadatas=[{
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "source": "user_interaction",
-                    "tags": tags
-                }],
-                ids=[str(uuid.uuid4())]
-            )
-            return "Memória consolidada."
-        except Exception as e:
-            log.error(f"Erro de gravação: {e}")
-            return "Falha na gravação."
+        info = extra_info or {}
 
-    def relembrar(self, query: str, limit: int = 3) -> str:
-        """Recupera contexto relevante."""
-        if not self._conectar(): return ""
-        if not query.strip(): return ""
+        documento = f"Preferência musical registrada: {musica}, de {artista}."
+
+        metadados = {
+            "musica": musica,
+            "artista": artista,
+            "tags": tags,
+            "spotify_id": str(info.get("id", "manual")),
+            "explicit": bool(info.get("explicit", False)),
+            "tipo": "track",
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        }
 
         try:
-            if self.collection.count() == 0: return ""
+            self.collection.upsert(
+                documents=[documento],
+                metadatas=[metadados],
+                ids=[self._gerar_id_track(musica, artista)]
+            )
+            log.info(f"💾 Memória musical consolidada: {musica} — {artista}")
 
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=limit
+        except Exception as exc:
+            log.error(
+                f"❌ Erro ao persistir memória musical: {type(exc).__name__} - {exc}"
             )
 
-            docs = results.get('documents', [[]])[0]
-            
-            if not docs: 
-                return ""
+    # =======================
+    # Leitura
+    # =======================
 
-            formatted_memories = [f"- {doc}" for doc in docs]
-            contexto = "\n".join(formatted_memories)
-            
-            log.debug(f"🧠 Flashback ({len(docs)}): {contexto[:50]}...")
-            return contexto
+    def relembrar(
+        self,
+        consulta: str,
+        limite: int = 3,
+        tags: Optional[str] = None
+    ) -> List[str]:
+        if not self._conectar() or not consulta.strip():
+            return []
 
-        except Exception as e:
-            log.error(f"Erro de leitura: {e}")
-            return ""
+        try:
+            filtro = {"tags": tags} if tags else None
+
+            resultado = self.collection.query(
+                query_texts=[consulta],
+                n_results=limite,
+                where=filtro
+            )
+
+            documentos = resultado.get("documents", [[]])[0]
+            return [doc for doc in documentos if doc]
+
+        except Exception as exc:
+            log.error(f"❌ Falha na recuperação semântica: {exc}")
+            return []
+
+    # =======================
+    # Status
+    # =======================
 
     def status(self) -> str:
-        if not self._conectar(): return "Offline"
-        return f"Online ({self.collection.count()} memórias)"
+        if not self._is_connected:
+            return "Offline (memória ainda não inicializada)"
+        return f"Online ({self.collection.count()} registros)"
 
+
+# Singleton explícito (decisão consciente)
 memoria = Hipocampo()

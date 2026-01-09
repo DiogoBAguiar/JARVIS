@@ -1,125 +1,123 @@
 import os
-import asyncio
 import threading
 import queue
-import uuid
-import time
-import edge_tts
+import asyncio
 import pygame
+import edge_tts
+from typing import Optional
 
-# Imports do Sistema
+# Core Imports
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
-log = JarvisLogger("BROCA_VOICE")
+# Configurações de Voz
+VOICE_NAME = "pt-BR-AntonioNeural"  # Opções: pt-BR-FranciscaNeural, pt-BR-ThalitaNeural
+RATE = "+0%"
+VOLUME = "+0%"
 
-# Configuração
-VOICE = "pt-BR-AntonioNeural" 
-RATE = "+10%"
-PITCH = "+0Hz"
-
-class SpeakService:
+class NeuralSpeaker:
     def __init__(self):
+        self.log = JarvisLogger("BROCA_VOICE")
         self._queue = queue.Queue()
         self._stop_event = threading.Event()
         self._thread = None
-        self._is_active = False
         
+        # Inicializa Mixer do Pygame (para reprodução fluida)
         try:
-            pygame.mixer.init(frequency=24000, buffer=1024)
+            pygame.mixer.init()
+            self.log.info(f"🔊 Córtex Vocal Ativo ({VOICE_NAME})")
         except Exception as e:
-            log.warning(f"Driver de áudio não detectado: {e}")
+            self.log.critical(f"Erro no subsistema de áudio: {e}")
 
-    def start(self):
-        if self._is_active: return
-        self._is_active = True
-        self._stop_event.clear()
-        bus.inscrever(Eventos.FALAR, self._queue_fala)
-        self._thread = threading.Thread(target=self._worker_loop, name="VoiceWorker", daemon=True)
-        self._thread.start()
-        log.info(f"🔊 Córtex Vocal Ativo ({VOICE})")
+        # Se inscreve para receber ordens de fala
+        bus.inscrever(Eventos.FALAR, self._adicionar_a_fila)
 
-    def stop(self):
-        self._is_active = False
-        self._stop_event.set()
-        try:
-            pygame.mixer.music.stop()
-            pygame.mixer.quit()
-        except: pass
-        if self._thread:
-            self._thread.join(timeout=2.0)
-        log.info("🔇 Córtex Vocal Desligado.")
-
-    def _queue_fala(self, evento):
-        if not self._is_active: return
+    def _adicionar_a_fila(self, evento: Evento):
+        """Recebe o texto do Cérebro e coloca na fila de processamento."""
         texto = evento.dados.get("texto")
         if texto:
             self._queue.put(texto)
 
-    def _worker_loop(self):
+    def _worker(self):
+        """Loop principal da Thread de Fala."""
+        # Cria um loop de eventos Asyncio para esta thread específica
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
         while not self._stop_event.is_set():
             try:
-                texto = self._queue.get(timeout=0.5)
-                self._speak_now(texto, loop)
+                # 1. Espera por texto (bloqueia a thread, não o sistema)
+                texto = self._queue.get(timeout=1.0)
+                
+                # 2. Notifica o sistema: "VOU FALAR" (Ouvido fica surdo agora)
+                bus.publicar(Evento(Eventos.STATUS_FALA, {"status": True}))
+                
+                # 3. Gera e Reproduz
+                arquivo_temp = self._gerar_audio(loop, texto)
+                if arquivo_temp:
+                    self._reproduzir_audio(arquivo_temp)
+                    self._limpar_temp(arquivo_temp)
+
+                # 4. Notifica o sistema: "TERMINEI" (Ouvido volta a escutar)
+                bus.publicar(Evento(Eventos.STATUS_FALA, {"status": False}))
+                
                 self._queue.task_done()
+
             except queue.Empty:
                 continue
             except Exception as e:
-                log.error(f"Erro no loop de voz: {e}")
+                self.log.error(f"Erro no loop vocal: {e}")
+                # Garante que o ouvido volte a funcionar mesmo se der erro
+                bus.publicar(Evento(Eventos.STATUS_FALA, {"status": False}))
 
-        loop.close()
-
-    def _speak_now(self, texto: str, loop):
-        filename = f"tts_{uuid.uuid4().hex}.mp3"
+    def _gerar_audio(self, loop, texto: str) -> Optional[str]:
+        """Gera MP3 usando Edge-TTS (Microsoft Azure Gratuito)."""
+        arquivo_saida = os.path.join(os.getcwd(), "temp_speech.mp3")
         
         try:
-            # --- AJUSTE VISUAL: MOSTRAR O QUE FALA NO TERMINAL ---
-            log.info(f"🗣️  JARVIS DIZ: '{texto}'")
-            # -----------------------------------------------------
+            communicate = edge_tts.Communicate(texto, VOICE_NAME, rate=RATE, volume=VOLUME)
+            # Roda a corrotina async dentro da thread síncrona
+            loop.run_until_complete(communicate.save(arquivo_saida))
+            return arquivo_saida
+        except Exception as e:
+            self.log.error(f"Erro na síntese TTS: {e}")
+            return None
 
-            # 1. BLOQUEIO IMEDIATO (Evita ouvir a si mesmo)
-            bus.publicar(Evento(Eventos.STATUS_FALA, {"status": True}))
-
-            # 2. Geração (Demora ~1s)
-            loop.run_until_complete(self._generate_audio(texto, filename))
-            
-            if not os.path.exists(filename): return
-
-            # 3. Reprodução
-            pygame.mixer.music.load(filename)
+    def _reproduzir_audio(self, caminho_arquivo: str):
+        """Toca o áudio bloqueando APENAS a thread de fala."""
+        try:
+            # Carrega e Toca
+            pygame.mixer.music.load(caminho_arquivo)
             pygame.mixer.music.play()
             
-            while pygame.mixer.music.get_busy() and not self._stop_event.is_set():
-                time.sleep(0.1) 
+            # Barra de progresso visual no terminal
+            print(f"🗣️  JARVIS: '{caminho_arquivo}'") # Apenas debug, pode remover
             
-            pygame.mixer.music.unload()
-
+            # Loop de espera (Busy Wait eficiente) enquanto toca
+            while pygame.mixer.music.get_busy() and not self._stop_event.is_set():
+                pygame.time.Clock().tick(10) # Checa a cada 100ms
+                
         except Exception as e:
-            log.error(f"Falha ao falar '{texto}': {e}")
-        
-        finally:
-            # 4. LIBERAÇÃO
-            time.sleep(0.2) 
-            bus.publicar(Evento(Eventos.STATUS_FALA, {"status": False}))
-            self._safe_remove(filename)
+            self.log.error(f"Erro no player: {e}")
 
-    async def _generate_audio(self, text: str, filename: str):
-        communicate = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
-        await communicate.save(filename)
+    def _limpar_temp(self, caminho: str):
+        try:
+            pygame.mixer.music.unload() # Libera o arquivo
+            if os.path.exists(caminho):
+                os.remove(caminho)
+        except: pass
 
-    def _safe_remove(self, filename: str):
-        for _ in range(3):
-            try:
-                if os.path.exists(filename):
-                    os.remove(filename)
-                break
-            except PermissionError:
-                time.sleep(0.2)
-            except Exception:
-                break
+    def start(self):
+        if not self._thread or not self._thread.is_alive():
+            self._stop_event.clear()
+            self._thread = threading.Thread(target=self._worker, name="BrocaSpeaker", daemon=True)
+            self._thread.start()
 
-mouth = SpeakService()
+    def stop(self):
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join(timeout=2.0)
+
+# Instância Singleton
+mouth = NeuralSpeaker()
