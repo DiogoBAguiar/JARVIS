@@ -1,80 +1,101 @@
 import os
 import sys
-import re
-from typing import Optional, Tuple
+import random
+import webbrowser
+import time
 
 # Garante raiz do projeto
 sys.path.append(os.getcwd())
-
 from jarvis_system.hipocampo.memoria import memoria
-from jarvis_system.cortex_frontal.observability import JarvisLogger
 
-log = JarvisLogger("MIGRADOR_EXPLORER")
-
-# Padrões de captura baseados no histórico das versões anteriores (V3 a V7)
-PADROES_MUSICA = [
-    re.compile(r"música ['\"](.+?)['\"] de ['\"](.+?)['\"]", re.IGNORECASE),
-    re.compile(r"curte a música ['\"](.+?)['\"] de ['\"](.+?)['\"]", re.IGNORECASE),
-    re.compile(r"Gosto:\s*(.+?)\s+de\s+(.+)", re.IGNORECASE),
-]
-
-def extrair_musica(documento: str) -> Optional[Tuple[str, str]]:
-    for padrao in PADROES_MUSICA:
-        match = padrao.search(documento)
-        if match:
-            return match.group(1).strip(), match.group(2).strip()
-    return None
-
-def migrar_base_de_dados(dry_run: bool = False) -> None:
-    log.info("🚀 Iniciando migração com inspeção de coleções...")
-
-    if not memoria._conectar():
-        log.critical("🛑 Erro ao conectar no Hipocampo.")
+def tocar_musica(comando):
+    print(f"\n🎧 J.A.R.V.I.S. Processando pedido: '{comando}'...")
+    
+    if not memoria._conectar(): 
+        print("❌ Erro de conexão com a memória.")
         return
 
-    # 1. INSPEÇÃO: Lista todas as coleções disponíveis no banco físico
-    colecoes_existentes = memoria.client.list_collections()
-    nomes_colecoes = [c.name for c in colecoes_existentes]
-    log.info(f"🔍 Coleções detectadas no ChromaDB: {nomes_colecoes}")
+    collection = memoria.collection
+    termo = comando.lower()
+    
+    # --- 1. INTELIGÊNCIA DE DJ (Roteamento) ---
+    filtro = {}
+    
+    # Detecta Gêneros
+    if "sertanejo" in termo: filtro["genero"] = "Sertanejo"
+    elif "rock" in termo: filtro["genero"] = "Rock"
+    elif "trap" in termo: filtro["genero"] = "Trap"
+    elif "rap" in termo or "hip" in termo: filtro["genero"] = "Hip-Hop/Rap"
+    elif "eletr" in termo or "dance" in termo: filtro["genero"] = "Eletrônica"
+    elif "forr" in termo or "pisadinha" in termo: filtro["genero"] = "Forró/Piseiro"
+    elif "lol" in termo or "league" in termo or "jogar" in termo: 
+        filtro["genero"] = "Soundtrack/Game"
+    
+    # Detecta Artistas Específicos (Busca simples no texto)
+    if not filtro:
+        # Se não pediu gênero, assume que é uma busca por artista/nome
+        print(f"   🔍 Buscando por nome/artista: '{comando}'")
+        resultados = collection.query(query_texts=[comando], n_results=10)
+        
+        if not resultados['ids'] or not resultados['ids'][0]:
+            print("   ❌ Não encontrei nada parecido na sua biblioteca.")
+            return
+            
+        # Pega a melhor correspondência
+        meta = resultados['metadatas'][0][0]
+        
+    else:
+        # Se pediu gênero, pega aleatório daquele gênero
+        print(f"   🎲 Selecionando um {filtro['genero']} aleatório para você...")
+        resultados = collection.get(where=filtro)
+        
+        qtd = len(resultados['ids'])
+        if qtd == 0:
+            print(f"   ⚠️ Nenhuma música encontrada no gênero {filtro['genero']}.")
+            return
+            
+        idx_rand = random.randint(0, qtd - 1)
+        meta = resultados['metadatas'][idx_rand]
 
-    if not nomes_colecoes:
-        log.warning("❌ Nenhuma coleção encontrada no banco de dados físico.")
-        return
+    # --- 2. DISPLAY DO PLAYER ---
+    musica = meta.get('musica', 'Desconhecida')
+    artista = meta.get('artista', 'Desconhecido')
+    genero = meta.get('genero', 'Indefinido')
+    album = meta.get('album', 'Single')
+    ano = meta.get('ano', '')
+    capa = meta.get('capa_url')
+    preview = meta.get('preview_url')
+    
+    print("\n" + "="*50)
+    print(f"💿 TOCANDO AGORA 💿")
+    print("="*50)
+    print(f"🎵 Música:  {musica}")
+    print(f"🎤 Artista: {artista}")
+    print(f"🎹 Gênero:  {genero}")
+    print(f"💿 Álbum:   {album} ({ano})")
+    print("="*50)
+    
+    # --- 3. AÇÃO REAL ---
+    # Abre a capa do álbum para dar um efeito visual "Now Playing"
+    if capa:
+        print("   🖼️ Exibindo capa do álbum...")
+        webbrowser.open(capa)
+    else:
+        print("   (Sem capa disponível)")
 
-    migrados_total = 0
-
-    # 2. ITERAÇÃO: Busca dados em cada coleção encontrada
-    for nome_col in nomes_colecoes:
-        log.info(f"📂 Processando coleção: '{nome_col}'...")
-        col = memoria.client.get_collection(name=nome_col)
-        dados = col.get()
-        documentos = dados.get("documents", [])
-
-        if not documentos:
-            log.info(f"   - Coleção '{nome_col}' está vazia.")
-            continue
-
-        log.info(f"   - {len(documentos)} documentos encontrados em '{nome_col}'.")
-
-        for idx, doc in enumerate(documentos, start=1):
-            try:
-                resultado = extrair_musica(doc)
-                if resultado:
-                    musica, artista = resultado
-                    if not dry_run:
-                        # Salva na coleção OFICIAL usando o novo formato de metadados
-                        memoria.memorizar_musica(
-                            musica=musica, 
-                            artista=artista, 
-                            tags="spotify_likes"
-                        )
-                    migrados_total += 1
-            except Exception as e:
-                log.error(f"   - Erro no documento {idx} de {nome_col}: {e}")
-
-    log.info(f"✅ Fim da migração. Total de músicas recuperadas: {migrados_total}")
-    log.info(f"📡 Status Final: {memoria.status()}")
+    # Se tiver preview do iTunes, toca (abre no navegador)
+    if preview:
+        print("   🔊 Abrindo áudio...")
+        # Pequeno delay para não abrir tudo de uma vez
+        time.sleep(1) 
+        webbrowser.open(preview)
+    else:
+        print("   ⚠️ Link de áudio não disponível (apenas metadados).")
 
 if __name__ == "__main__":
-    # DICA: Mude para True primeiro para testar se ele acha as músicas
-    migrar_base_de_dados(dry_run=True)
+    while True:
+        print("\n" + "-"*50)
+        pedido = input("🎤 Peça uma música (ou 'sair'): ")
+        if pedido.lower() in ['sair', 'exit']: break
+        
+        tocar_musica(pedido)

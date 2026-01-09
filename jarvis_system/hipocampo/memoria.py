@@ -109,6 +109,11 @@ class Hipocampo:
         if not self._conectar():
             return
 
+        # --- 🛡️ VACINA DE NORMALIZAÇÃO ---
+        # Converte a tag para minúsculo antes de salvar (Ex: "Acadus" -> "acadus")
+        tags = tags.lower().strip()
+        # -------------------------------
+
         info = extra_info or {}
 
         documento = f"Preferência musical registrada: {musica}, de {artista}."
@@ -129,7 +134,7 @@ class Hipocampo:
                 metadatas=[metadados],
                 ids=[self._gerar_id_track(musica, artista)]
             )
-            log.info(f"💾 Memória musical consolidada: {musica} — {artista}")
+            log.info(f"💾 Memória musical consolidada: {musica} — {artista} [{tags}]")
 
         except Exception as exc:
             log.error(
@@ -150,6 +155,12 @@ class Hipocampo:
             return []
 
         try:
+            # --- 🛡️ VACINA DE NORMALIZAÇÃO ---
+            # Garante que a busca também use minúsculas
+            if tags:
+                tags = tags.lower().strip()
+            # -------------------------------
+
             filtro = {"tags": tags} if tags else None
 
             resultado = self.collection.query(

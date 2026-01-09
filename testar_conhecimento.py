@@ -1,7 +1,7 @@
 import os
 import sys
 
-# Adiciona raiz ao path
+# Garante que a raiz do projeto esteja no path
 sys.path.append(os.getcwd())
 
 from jarvis_system.hipocampo.memoria import memoria
@@ -9,38 +9,42 @@ from jarvis_system.hipocampo.memoria import memoria
 def jarvis_pergunta(pergunta):
     print(f"\n👤 Usuário: {pergunta}")
     
-    # Tentamos usar o método de busca da coleção do ChromaDB diretamente
-    # para garantir que não haverá erro de atributo
-    try:
-        # Busca semântica: transforma a pergunta em vetor e compara no banco
-        resultados = memoria.collection.query(
-            query_texts=[pergunta],
-            n_results=3
-        )
+    # 1. Realiza a busca semântica
+    # O método 'relembrar' agora retorna uma lista de strings formatadas
+    memorias = memoria.relembrar(pergunta, limite=3)
+    
+    if memorias:
+        # Pega a primeira (mais relevante) para a resposta principal
+        resposta_principal = memorias[0].replace("- ", "")
+        print(f"🤖 J.A.R.V.I.S: Baseado nos registros, {resposta_principal}")
         
-        if resultados and resultados['documents'][0]:
-            print(f"🤖 J.A.R.V.I.S: Baseado na minha memória, {resultados['documents'][0][0]}")
-            
-            print("\n📚 Outras correspondências próximas:")
-            for i, doc in enumerate(resultados['documents'][0][1:], 1):
-                print(f"   {i}. {doc}")
-        else:
-            print("🤖 J.A.R.V.I.S: Senhor, não encontrei registros sobre isso.")
-            
-    except Exception as e:
-        print(f"❌ Erro na consulta: {e}")
+        if len(memorias) > 1:
+            print("\n📚 Outras correlações encontradas na memória:")
+            for i, m in enumerate(memorias[1:], 1):
+                print(f"   {i}. {m.replace('- ', '')}")
+    else:
+        print("🤖 J.A.R.V.I.S: Senhor, não localizei nenhuma informação correlacionada nos meus bancos de dados.")
 
 def iniciar_teste():
-    if memoria.collection is None:
+    # Verifica conexão ativa
+    if not memoria._is_connected:
         memoria._conectar()
 
-    print("=== TESTE DE CONHECIMENTO DO J.A.R.V.I.S ===")
+    print("\n" + "="*50)
+    print("🧠 CONSOLE DE RECUPERAÇÃO SEMÂNTICA - J.A.R.V.I.S")
+    print("="*50)
+    print(f"Status: {memoria.status()}")
     print("Digite suas perguntas ou 'sair' para encerrar.")
 
     while True:
         prompt = input("\nPergunta: ")
         if prompt.lower() in ['sair', 'exit', 'quit']:
+            print("🤖 J.A.R.V.I.S: Encerrando consulta. Até logo, Senhor.")
             break
+        
+        if not prompt.strip():
+            continue
+            
         jarvis_pergunta(prompt)
 
 if __name__ == "__main__":
