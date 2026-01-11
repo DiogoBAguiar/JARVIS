@@ -6,7 +6,7 @@ import time
 import re
 import numpy as np
 import sounddevice as sd
-# import noisereduce as nr  <-- Desabilitado para reduzir latência visual
+# import noisereduce as nr  <-- Desativado para reduzir latência
 from faster_whisper import WhisperModel
 
 # Core Imports
@@ -15,75 +15,98 @@ from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
 # --- INTEGRAÇÃO COM MEMÓRIA ---
+# Importamos o módulo de reflexos que consertamos anteriormente.
+# Ele já gerencia a criação dos arquivos JSON se não existirem.
 try:
     from jarvis_system.hipocampo.reflexos import reflexos
 except ImportError:
+    # Fallback apenas se o arquivo reflexos.py sumir (não deve acontecer)
     class ReflexosMock:
         def corrigir(self, t): return t
     reflexos = ReflexosMock()
 
-# --- CONFIGURAÇÃO ---
+# --- CONFIGURAÇÃO DE ÁUDIO ---
 SAMPLE_RATE = 16000
 CHANNELS = 1
 BLOCK_SIZE = 4000 
-# Ajuste fino: Se a barra ficar cheia o tempo todo, diminua o GANHO para 5.0
-LIMIAR_SILENCIO = 0.005 
+# Ajuste de sensibilidade:
+# 0.005 = Muito sensível (pega respiração)
+# 0.015 = Pouco sensível (precisa falar alto)
+LIMIAR_SILENCIO = 0.008 
 GANHO_MIC = 10.0
-BLOCOS_PAUSA_FIM = 8 
+# Blocos de silêncio para considerar fim de frase (aprox 1.5s)
+BLOCOS_PAUSA_FIM = 6 
 
-def load_speech_config():
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    config_path = os.path.join(base_dir, "data", "speech_config.json")
-    defaults = {"wake_words": ["jarvis"], "known_apps": ["spotify", "chrome"], "phonetic_map": {}}
-    if not os.path.exists(config_path): return defaults
+def get_initial_prompt():
+    """Gera o prompt de contexto baseado na memória do Jarvis."""
+    # Tenta ler as palavras-chave do arquivo JSON para enviesar o modelo
     try:
-        with open(config_path, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return defaults
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        config_path = os.path.join(base_dir, "data", "speech_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                apps = data.get("known_apps", [])
+                wake = data.get("wake_words", [])
+                # Junta tudo numa lista de dicas
+                palavras = ", ".join(wake + apps + ["Tocar", "Abrir", "Pausar", "Volume", "Spotify"])
+                return f"Contexto: Assistente Virtual. Vocabulário: {palavras}."
+    except:
+        pass
+    return "Contexto: Assistente Virtual Brasileiro. Comandos: Tocar, Abrir, Pausar."
 
-CONFIG = load_speech_config()
-PHONETIC_MAP = CONFIG.get("phonetic_map", {})
-WAKE_WORDS = CONFIG.get("wake_words", [])
-
-# Prompt para enviesar o modelo e melhorar precisão
-PALAVRAS_CHAVE = ", ".join(WAKE_WORDS + CONFIG.get("known_apps", []) + ["Tocar", "Pausar"])
-PROMPT_INICIAL = f"Contexto: Assistente. Vocabulário: {PALAVRAS_CHAVE}."
+PROMPT_ATUAL = get_initial_prompt()
 
 class IntentionNormalizer:
     def __init__(self, logger: JarvisLogger):
         self.log = logger
+        # Lista negra de alucinações comuns do Whisper em silêncio
         self.hallucinations = [
-            "legendas pela comunidade", "amara.org", "legendado por", 
-            "subtitles by", "todos os direitos reservados", "transcrição",
-            "mbc", "auxiliary", "copyright"
+            "legendas pela comunidade", 
+            "amara.org", 
+            "legendado por", 
+            "subtitles by", 
+            "todos os direitos reservados", 
+            "transcrição",
+            "mbc", 
+            "auxiliary", 
+            "copyright", 
+            "encerrado o episódio",
+            "assinem o canal",
+            "ativem o sininho",
+            "deixe seu like"
         ]
 
     def process(self, text: str):
-        if not text: return
+        if not text or len(text.strip()) < 2: return
+        
+        text_lower = text.lower()
         
         # 1. Filtro de Alucinação
-        text_lower = text.lower()
         for h in self.hallucinations:
-            if h in text_lower: return
+            if h in text_lower:
+                # Se for alucinação, ignoramos silenciosamente
+                return
 
-        # 2. Correção Fonética
+        # 2. Correção Fonética (A Mágica acontece aqui)
+        # O reflexos.py vai trocar "Freigilson" por "Frei Gilson"
         clean_text = self._apply_phonetic_fix(text)
         
-        # 3. Envio (Limpa a linha da barra de volume antes de logar)
-        print("\r" + " " * 80 + "\r", end="") 
-        self.log.info(f"🧩 INTENÇÃO: '{clean_text}'")
+        # 3. Envio para o Cérebro
+        self._clear_line()
+        self.log.info(f"🧩 INTENÇÃO RECONHECIDA: '{clean_text}'")
         bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": clean_text}))
 
     def _apply_phonetic_fix(self, text: str) -> str:
-        text = text.lower().strip()
+        text = text.strip()
+        # Remove pontuação excessiva
         text = text.replace('.', '').replace(',', '').replace('?', '').replace('!', '')
-        text = reflexos.corrigir(text)
         
-        sorted_map = sorted(PHONETIC_MAP.items(), key=lambda x: len(x[0]), reverse=True)
-        for erro, correcao in sorted_map:
-            if erro in text:
-                pattern = r'(?<!\w)' + re.escape(erro) + r'(?!\w)'
-                text = re.sub(pattern, correcao, text, flags=re.IGNORECASE)
-        return text
+        # Chama o módulo de reflexos (JSON/Memória RAM)
+        return reflexos.corrigir(text)
+
+    def _clear_line(self):
+        print("\r" + " " * 100 + "\r", end="")
 
 class WhisperListenService:
     def __init__(self):
@@ -99,30 +122,31 @@ class WhisperListenService:
         self._load_model()
 
     def _load_model(self):
-        self.log.info("⏳ Carregando modelo Whisper (Small)...")
+        self.log.info("⏳ Carregando modelo Whisper (Small Int8)...")
         try:
             self.model = WhisperModel("small", device="cpu", compute_type="int8")
-            self.log.info("✅ Whisper Pronto (VAD ON).")
+            self.log.info("✅ Whisper Pronto (VAD Híbrido Ativo).")
         except Exception as e:
-            self.log.critical(f"Falha Whisper: {e}")
+            self.log.critical(f"Falha ao carregar Whisper: {e}")
 
     def _on_speech_status(self, evento: Evento):
+        """Pausa o ouvido quando o Jarvis está falando."""
         status_anterior = self._is_jarvis_speaking
         self._is_jarvis_speaking = evento.dados.get("status", False)
         
-        # Feedback Visual de Mudança de Estado
         if self._is_jarvis_speaking and not status_anterior:
-            print("\r" + " " * 80 + "\r", end="")
-            print("🛑 JARVIS FALANDO (Microfone Pausado)...")
+            self._clear_line()
+            print("🛑 JARVIS FALANDO (Ouvido Pausado)...")
+            with self._queue.mutex:
+                self._queue.queue.clear()
         elif not self._is_jarvis_speaking and status_anterior:
             print("👂 Ouvido Reativado.")
 
-        if self._is_jarvis_speaking:
-            with self._queue.mutex:
-                self._queue.queue.clear()
-
     def _audio_callback(self, indata, frames, time, status):
         self._queue.put(indata.copy())
+
+    def _clear_line(self):
+        print("\r" + " " * 100 + "\r", end="")
 
     def _worker(self):
         self.log.info(f"👂 Monitorando (Gain={GANHO_MIC}x | Limiar={LIMIAR_SILENCIO})...")
@@ -145,25 +169,20 @@ class WhisperListenService:
                     falando = False
                     continue
 
-                # Processamento
+                # Normalização
                 chunk_float = ((chunk_int16.astype(np.float32) / 32768.0) * GANHO_MIC).flatten()
                 volume = np.linalg.norm(chunk_float) / np.sqrt(len(chunk_float))
                 
-                # --- VISUALIZAÇÃO SEMPRE ATIVA ---
-                # Agora mostramos a barra independente do if, mas mudamos a cor/estilo
-                bar_len = int(min(volume, 1.0) * 30)
+                # Visualização
+                bar_len = int(min(volume, 1.0) * 20)
                 bar = "█" * bar_len
-                espaco = " " * (30 - bar_len)
-                
-                # Se estiver gravando (acima do limiar), mostramos diferente
-                estado = "🔴 GRAVANDO" if falando else "💤 AGUARDANDO"
-                if volume > LIMIAR_SILENCIO:
-                    estado = "🟢 DETECTADO"
-                
-                # Print dinâmico que não polui log
-                print(f"\r🎤 {volume:.3f} |{bar}{espaco}| {estado}", end="", flush=True)
+                espaco = " " * (20 - bar_len)
+                estado_visual = "🔴 REC" if falando else "💤 IDLE"
+                if volume > LIMIAR_SILENCIO: estado_visual = "🟢 DETECT"
 
-                # Lógica de Captura
+                print(f"\r🎤 Vol: {volume:.3f} |{bar}{espaco}| {estado_visual}", end="", flush=True)
+
+                # Lógica VAD
                 if volume > LIMIAR_SILENCIO:
                     if not falando: falando = True
                     blocos_silencio = 0
@@ -174,12 +193,12 @@ class WhisperListenService:
                     blocos_silencio += 1
                     
                     if blocos_silencio > BLOCOS_PAUSA_FIM:
-                        # Limpa a linha para o log aparecer bonito
-                        print("\r" + " " * 80 + "\r", end="")
-                        self.log.info("⏳ Processando áudio...")
+                        self._clear_line()
+                        self.log.info("⏳ Processando áudio capturado...")
                         
-                        audio_final = np.concatenate(buffer_frase)
-                        self._transcrever(audio_final)
+                        if len(buffer_frase) > 0:
+                            audio_final = np.concatenate(buffer_frase)
+                            self._transcrever(audio_final)
                         
                         buffer_frase = []
                         falando = False
@@ -187,24 +206,23 @@ class WhisperListenService:
 
     def _transcrever(self, audio_data):
         try:
+            # Whisper com VAD interno ativado
             segments, info = self.model.transcribe(
-                audio_data, beam_size=5, language="pt",
+                audio_data, 
+                beam_size=5, 
+                language="pt",
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
-                initial_prompt=PROMPT_INICIAL,
+                initial_prompt=PROMPT_ATUAL, # Usa o prompt com vocabulário atualizado
                 condition_on_previous_text=False
             )
             
             texto_final = " ".join([s.text for s in segments]).strip()
             
             if texto_final:
-                # Limpa linha de novo por garantia
-                print("\r" + " " * 80 + "\r", end="")
+                self._clear_line()
                 self.log.info(f"📝 Whisper ouviu: '{texto_final}'")
                 self.normalizer.process(texto_final)
-            else:
-                # print("\r⚠️ Ruído ignorado.", end="") # Opcional
-                pass
                 
         except Exception as e:
             self.log.error(f"Erro transcrição: {e}")
@@ -220,4 +238,15 @@ class WhisperListenService:
         if self._thread:
             self._thread.join(timeout=2.0)
 
+# Instância Global
 ears = WhisperListenService()
+
+if __name__ == "__main__":
+    print("Iniciando teste de microfone...")
+    ears.start()
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        ears.stop()
+        print("Encerrando.")

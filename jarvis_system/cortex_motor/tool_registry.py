@@ -26,7 +26,7 @@ except ImportError:
     AgenteMedia = None
 
 try:
-    from jarvis_system.agentes_especialistas.agente_spotify import AgenteSpotify # <--- NOVO
+    from jarvis_system.agentes_especialistas.spotify.agent import AgenteSpotify # <--- NOVO
 except ImportError:
     AgenteSpotify = None
 # Padronização do nome do logger

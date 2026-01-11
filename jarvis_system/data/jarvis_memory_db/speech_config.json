@@ -1,0 +1,27 @@
+{
+    "wake_words": [
+        "jarvis",
+        "computador",
+        "sistema"
+    ],
+    "known_apps": [
+        "spotify",
+        "chrome",
+        "vscode",
+        "whatsapp",
+        "discord"
+    ],
+    "phonetic_map": {
+        "freigilson": "Frei Gilson",
+        "freguesia": "Frei Gilson",
+        "freio gilson": "Frei Gilson",
+        "link em park": "Linkin Park",
+        "link park": "Linkin Park",
+        "cold play": "Coldplay",
+        "spotfy": "Spotify",
+        "sportfy": "Spotify",
+        "xereca": "Shrek",
+        "discor": "Discord",
+        "kord": "Discord"
+    }
+}
