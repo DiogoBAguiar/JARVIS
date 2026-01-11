@@ -1,174 +1,211 @@
 import os
-import re
-from typing import Optional
+import logging
+from typing import Optional, Any
 
-# Framework Agno e Modelos Suportados
-from agno.agent import Agent
-from agno.models.google import Gemini
-from agno.models.groq import Groq
+# Framework Cognitivo (Agno)
+try:
+    from agno.agent import Agent
+    from agno.models.google import Gemini
+    from agno.models.groq import Groq
+except ImportError:
+    # Fallback crítico se o framework não estiver instalado
+    raise ImportError("Framework 'agno' não encontrado. Instale as dependências.")
 
-# Importamos o Controller
 from .controller import SpotifyController
 
+# Configuração de Logs
+logger = logging.getLogger("SPOTIFY_NLU")
+
 class SpotifyAgnoAgent:
+    """
+    Córtex Especialista em Música.
+    Traduz intenção natural (pt-BR) em comandos mecânicos para o Controller.
+    Possui tolerância a falhas de API (Fallback Local) e erros de execução.
+    """
+
     def __init__(self):
-        self.controller = SpotifyController()
-        # Lê o modelo do .env (ex: llama-3.3-70b-versatile)
+        try:
+            self.controller = SpotifyController()
+        except Exception as e:
+            logger.critical(f"Falha ao iniciar Controller: {e}")
+            self.controller = None # O agente tentará operar em modo degradado ou avisar erro
+
         self.model_name = os.getenv("JARVIS_MODEL_CLOUD", "gemini-1.5-flash")
         self.agent = self._configurar_agente()
 
     def _get_llm_instance(self):
-        """Fábrica de LLMs: Decide qual driver usar."""
-        # Se for modelo Llama/Mixtral -> Groq
-        if "llama" in self.model_name.lower() or "mixtral" in self.model_name.lower():
-            api_key = os.getenv("GROQ_API_KEY")
-            if api_key:
-                return Groq(id=self.model_name, api_key=api_key)
+        """Seleção dinâmica de LLM com fallback de configuração."""
+        groq_key = os.getenv("GROQ_API_KEY")
+        gemini_key = os.getenv("GEMINI_API_KEY")
+
+        # Preferência por Groq (Llama) se configurado e solicitado
+        if ("llama" in self.model_name.lower() or "mixtral" in self.model_name.lower()) and groq_key:
+            logger.info(f"Usando motor cognitivo: Groq ({self.model_name})")
+            return Groq(id=self.model_name, api_key=groq_key)
         
-        # Padrão -> Gemini
-        return Gemini(id="gemini-1.5-flash", api_key=os.getenv("GEMINI_API_KEY"))
-
-    def _configurar_agente(self) -> Agent:
+        # Fallback para Gemini
+        if gemini_key:
+            logger.info("Usando motor cognitivo: Gemini 1.5 Flash")
+            return Gemini(id="gemini-1.5-flash", api_key=gemini_key)
         
-        # --- DEFINIÇÃO DAS FERRAMENTAS (TOOLS) ---
+        # Último recurso: lança erro para ser tratado acima
+        logger.warning("Nenhuma chave de API de LLM encontrada (GROQ ou GEMINI).")
+        return None
 
-        def iniciar_aplicativo():
-            """
-            Use APENAS quando o usuário pedir explicitamente para 'abrir', 'iniciar' ou 'lançar' o Spotify.
-            Não use para tocar músicas, apenas para abrir a janela do aplicativo.
-            """
-            self.controller.launch_app()
-            return "Spotify inicializado."
+    def _configurar_agente(self) -> Optional[Agent]:
+        llm = self._get_llm_instance()
+        if not llm:
+            return None
 
-        def consultar_memoria_musical(descricao: str):
-            """
-            Use para buscar músicas no banco de dados pessoal do usuário (1000+ músicas/vetores).
-            Útil quando o usuário pede algo vago como 'toca aquela triste do Linkin Park', 
-            'música do ano 2005' ou 'algo para relaxar'.
-            """
+        # --- FERRAMENTAS BLINDADAS (Safe Tools) ---
+        # Cada ferramenta captura suas próprias falhas para informar a LLM sem quebrar o fluxo.
+
+        def iniciar_aplicativo() -> str:
+            """Abre o Spotify. Use se o usuário disser 'abrir', 'iniciar'."""
+            if not self.controller: return "Erro interno: Controlador inativo."
             try:
-                # Importação tardia para evitar ciclo e só carregar se necessário
+                if self.controller.launch_app():
+                    return "Spotify iniciado e pronto."
+                return "Falha ao iniciar o processo do Spotify."
+            except Exception as e:
+                logger.error(f"Erro na tool iniciar_aplicativo: {e}")
+                return f"Erro técnico ao abrir: {e}"
+
+        def consultar_memoria_musical(descricao: str) -> str:
+            """Busca na base vetorial pessoal (músicas favoritas/histórico)."""
+            try:
+                # Importação lazy e segura
                 from jarvis_system.hipocampo.curador_musical import CuradorMusical
                 curador = CuradorMusical()
-                
-                # Assume que o curador tem busca vetorial implementada
-                # Se não tiver, ele vai cair no except e o Jarvis segue a vida
                 resultados = curador.buscar_vetorial(descricao, top_k=1)
-                
                 if resultados:
-                    # Retorna algo como "Numb - Linkin Park"
-                    return f"Encontrei na biblioteca pessoal: {resultados[0]}. Use a ferramenta 'tocar_musica' com este nome."
-                return "Não encontrei nada específico na biblioteca local."
+                    return f"Encontrei na memória: '{resultados[0]}'. Tente tocar isso."
+                return "Nada relevante encontrado na memória pessoal."
+            except ImportError:
+                return "Módulo de memória musical não instalado."
             except Exception as e:
-                return f"Erro ao consultar memória: {e}"
+                logger.error(f"Erro na tool memoria: {e}")
+                return "Erro ao consultar memória."
 
-        def tocar_musica(nome_musica: str):
-            """
-            Busca e toca uma música específica.
-            Args:
-                nome_musica (str): O nome da música ou artista. Ex: "Linkin Park", "Rock".
-            """
-            return self.controller.play_search(nome_musica)
-
-        def clicar_elemento(texto_alvo: str):
-            """Clica em botões ou textos na tela."""
-            sucesso = self.controller.buscar_e_clicar(texto_alvo)
-            return "Clique realizado." if sucesso else f"Não encontrei '{texto_alvo}'."
-
-        def pausar_ou_continuar():
-            """Pausa ou retoma a música."""
-            self.controller.resume()
-            return "Feito."
-
-        def proxima_faixa():
-            """Pula para a próxima música."""
-            self.controller.next_track()
-            return "Próxima."
-
-        def faixa_anterior():
-            """Volta para a música anterior."""
-            self.controller.previous_track()
-            return "Voltei."
-
-        def rolar_tela(direcao: str = "down"):
-            """Rola a tela ('down' ou 'up')."""
-            self.controller.scroll(direcao)
-            return f"Rolei {direcao}."
-
-        def gerar_relatorio_biblioteca():
-            """Gera relatório da biblioteca."""
+        def tocar_musica(nome_musica: str) -> str:
+            """Toca uma música/artista específico."""
+            if not self.controller: return "Erro controlador."
             try:
-                from jarvis_system.hipocampo.curador_musical import CuradorMusical
-                CuradorMusical().gerar_relatorio()
-                return "Relatório gerado."
+                return self.controller.play_search(nome_musica)
             except Exception as e:
-                return f"Erro: {e}"
+                return f"Erro ao tentar tocar: {e}"
 
-        # --- CONFIGURAÇÃO DO AGENTE ---
+        def clicar_elemento(texto_alvo: str) -> str:
+            """Clica visualmente em um texto na tela."""
+            if not self.controller: return "Erro controlador."
+            try:
+                sucesso = self.controller.buscar_e_clicar(texto_alvo)
+                return "Clique efetuado." if sucesso else "Elemento não encontrado na tela."
+            except Exception as e:
+                return f"Erro visual: {e}"
+
+        # Wrappers simples com proteção
+        def controle_midia(acao: str) -> str:
+            """Controle genérico: pausar, continuar, proxima, anterior."""
+            if not self.controller: return "Erro controlador."
+            try:
+                if acao == "pausar" or acao == "continuar": self.controller.resume()
+                elif acao == "proxima": self.controller.next_track()
+                elif acao == "anterior": self.controller.previous_track()
+                return f"Ação '{acao}' enviada."
+            except Exception as e:
+                return f"Erro de controle: {e}"
+
+        # Mapeamento para tools do Agno
+        def pausar_ou_continuar(): return controle_midia("pausar")
+        def proxima_faixa(): return controle_midia("proxima")
+        def faixa_anterior(): return controle_midia("anterior")
+        
+        def rolar_tela(direcao: str = "down"):
+            if self.controller: self.controller.scroll(direcao); return f"Rolagem {direcao}."
+            return "Erro controlador."
+
         return Agent(
-            model=self._get_llm_instance(),
-            description="Você é o Agente DJ do Jarvis.",
+            model=llm,
+            description="Você é o Jarvis DJ. Controle o Spotify com precisão.",
             instructions=[
-                "Controle o Spotify via visão e teclado.",
-                "1. Se o usuário pedir para 'abrir' o app, use 'iniciar_aplicativo' IMEDIATAMENTE.",
-                "2. Se o pedido for vago (ex: 'aquela música boa'), use 'consultar_memoria_musical' primeiro.",
-                "3. Se o usuário disser apenas 'tocar' sem nome, pergunte 'O que deseja ouvir?'.",
-                "4. Para tocar músicas específicas, use 'tocar_musica'.",
-                "Seja conciso."
+                "Se o usuário pedir música vaga, consulte a memória primeiro.",
+                "Se pedir para abrir, use iniciar_aplicativo.",
+                "Para tocar, use tocar_musica.",
+                "Se falhar, explique o motivo.",
+                "Responda de forma muito breve (máx 1 frase)."
             ],
             tools=[
-                iniciar_aplicativo,        # Prioridade Alta
-                consultar_memoria_musical, # Prioridade Alta para contexto
-                tocar_musica, 
-                clicar_elemento, 
-                pausar_ou_continuar, 
-                proxima_faixa, 
-                faixa_anterior, 
-                rolar_tela, 
-                gerar_relatorio_biblioteca
+                iniciar_aplicativo, consultar_memoria_musical, tocar_musica,
+                clicar_elemento, pausar_ou_continuar, proxima_faixa,
+                faixa_anterior, rolar_tela
             ],
             markdown=True,
-            debug_mode=True
+            debug_mode=False # Desativado para produção
         )
 
     def _fallback_de_emergencia(self, comando: str) -> str:
-        """Lógica 'manual' para falhas de API."""
-        cmd = comando.lower()
-        print("⚠️ [NLU] Modo de Emergência (Offline).")
-
-        # Fallback inteligente: Tenta abrir se pedir abrir
-        if "abrir" in cmd and "spotify" in cmd:
-            self.controller.launch_app()
-            return "Modo Offline: Abrindo Spotify..."
-
-        if "tocar" in cmd or "play" in cmd:
-            termo = cmd.replace("tocar", "").replace("play", "").replace("abrir", "").replace("spotify", "").strip()
-            if not termo: termo = "Daily Mix 1"
-            
-            self.controller.play_search(termo)
-            return f"Modo Offline: Buscando '{termo}'..."
+        """Sistema Límbico: Reage quando o Córtex Frontal (LLM) falha."""
+        if not self.controller: return "Sistema de controle inoperante."
         
-        elif "pausa" in cmd:
-            self.controller.pause()
-            return "Pausado."
-        
-        elif "proxima" in cmd:
-            self.controller.next_track()
-            return "Próxima."
+        cmd = comando.lower().strip()
+        logger.warning(f"⚠️ Ativando Fallback Local para: '{cmd}'")
+
+        try:
+            if any(x in cmd for x in ["abrir", "iniciar", "lançar"]) and "spotify" in cmd:
+                self.controller.launch_app()
+                return "Abrindo Spotify (Modo Offline)."
+
+            if "proxima" in cmd or "pular" in cmd:
+                self.controller.next_track()
+                return "Próxima (Offline)."
             
-        return "Comando não compreendido no modo offline."
+            if "pausa" in cmd or "parar" in cmd or "continuar" in cmd:
+                self.controller.resume()
+                return "Play/Pause (Offline)."
+
+            # Tentativa de extração de música "na força bruta"
+            # Remove gatilhos comuns para isolar o nome da música
+            gatilhos = ["tocar", "toque", "play", "ouve", "ouvir", "bota", "coloca", "no spotify"]
+            termo_limpo = cmd
+            for g in gatilhos:
+                termo_limpo = termo_limpo.replace(g, "")
+            
+            termo_limpo = termo_limpo.strip()
+            
+            if termo_limpo and len(termo_limpo) > 2:
+                self.controller.play_search(termo_limpo)
+                return f"Buscando '{termo_limpo}' (Modo Offline)..."
+
+        except Exception as e:
+            logger.error(f"Erro no fallback: {e}")
+            return "Erro crítico no modo de emergência."
+
+        return "Não compreendi o comando (e a IA está offline)."
 
     def processar(self, comando: str) -> str:
+        """Entrada principal do Agente."""
+        if not comando: return ""
+        
+        # Se o agente não foi configurado (sem API Key), vai direto pro fallback
+        if not self.agent:
+            return self._fallback_de_emergencia(comando)
+
         try:
+            logger.info(f"🧠 Processando intenção: '{comando}'")
+            # Run do Agno
             resposta = self.agent.run(comando)
+            
+            # Extração segura do conteúdo
+            conteudo = ""
             if hasattr(resposta, 'content'):
-                return resposta.content
-            return str(resposta)
+                conteudo = resposta.content
+            else:
+                conteudo = str(resposta)
             
+            return conteudo
+
         except Exception as e:
-            erro_str = str(e)
-            # Fallback para erros de API (400, 429, 500)
-            if "400" in erro_str or "429" in erro_str or "tool_use_failed" in erro_str:
-                return self._fallback_de_emergencia(comando)
-            
-            return f"Erro crítico: {erro_str}"
+            logger.error(f"🔥 Falha Cognitiva (LLM): {e}")
+            # Se for erro de API, Rate Limit ou Modelo sobrecarregado -> Fallback
+            return self._fallback_de_emergencia(comando)

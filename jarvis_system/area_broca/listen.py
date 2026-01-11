@@ -1,190 +1,148 @@
 import os
-import json
+import sys
+import logging
+import time
 import queue
 import threading
-import time
-import re
 import numpy as np
 import sounddevice as sd
-# import noisereduce as nr  <-- Desativado para reduzir latência
-from faster_whisper import WhisperModel
 
-# Core Imports
-from jarvis_system.cortex_frontal.observability import JarvisLogger
+# Adicionando o diretório raiz ao path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
+from faster_whisper import WhisperModel
+from jarvis_system.hipocampo.reflexos import IntentionNormalizer
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
-# --- INTEGRAÇÃO COM MEMÓRIA ---
-# Importamos o módulo de reflexos que consertamos anteriormente.
-# Ele já gerencia a criação dos arquivos JSON se não existirem.
-try:
-    from jarvis_system.hipocampo.reflexos import reflexos
-except ImportError:
-    # Fallback apenas se o arquivo reflexos.py sumir (não deve acontecer)
-    class ReflexosMock:
-        def corrigir(self, t): return t
-    reflexos = ReflexosMock()
+# Configuração de Logs
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("AREA_BROCA_EARS")
 
-# --- CONFIGURAÇÃO DE ÁUDIO ---
+# Constantes de Áudio (Ajustadas para performance/latência)
 SAMPLE_RATE = 16000
 CHANNELS = 1
-BLOCK_SIZE = 4000 
-# Ajuste de sensibilidade:
-# 0.005 = Muito sensível (pega respiração)
-# 0.015 = Pouco sensível (precisa falar alto)
-LIMIAR_SILENCIO = 0.008 
-GANHO_MIC = 10.0
-# Blocos de silêncio para considerar fim de frase (aprox 1.5s)
-BLOCOS_PAUSA_FIM = 6 
+BLOCK_SIZE = 4000
+LIMIAR_SILENCIO = 0.015  # Ajustado para evitar disparos com ruído de fundo (ventoinhas/ar)
+BLOCOS_PAUSA_FIM = 5     # ~1.2 segundos de silêncio para considerar fim de frase
+GANHO_MIC = 5.0          # Multiplicador digital de volume
 
-def get_initial_prompt():
-    """Gera o prompt de contexto baseado na memória do Jarvis."""
-    # Tenta ler as palavras-chave do arquivo JSON para enviesar o modelo
-    try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        config_path = os.path.join(base_dir, "data", "speech_config.json")
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                apps = data.get("known_apps", [])
-                wake = data.get("wake_words", [])
-                # Junta tudo numa lista de dicas
-                palavras = ", ".join(wake + apps + ["Tocar", "Abrir", "Pausar", "Volume", "Spotify"])
-                return f"Contexto: Assistente Virtual. Vocabulário: {palavras}."
-    except:
-        pass
-    return "Contexto: Assistente Virtual Brasileiro. Comandos: Tocar, Abrir, Pausar."
-
-PROMPT_ATUAL = get_initial_prompt()
-
-class IntentionNormalizer:
-    def __init__(self, logger: JarvisLogger):
-        self.log = logger
-        # Lista negra de alucinações comuns do Whisper em silêncio
-        self.hallucinations = [
-            "legendas pela comunidade", 
-            "amara.org", 
-            "legendado por", 
-            "subtitles by", 
-            "todos os direitos reservados", 
-            "transcrição",
-            "mbc", 
-            "auxiliary", 
-            "copyright", 
-            "encerrado o episódio",
-            "assinem o canal",
-            "ativem o sininho",
-            "deixe seu like"
-        ]
-
-    def process(self, text: str):
-        if not text or len(text.strip()) < 2: return
+class OuvidoBiologico:
+    def __init__(self, model_size="base", device="cpu", compute_type="int8"):
+        """
+        Inicializa o subsistema de audição híbrido (Arquivo + Microfone).
+        """
+        logger.info(f"Inicializando Córtex Auditivo (Modelo: {model_size})...")
         
-        text_lower = text.lower()
-        
-        # 1. Filtro de Alucinação
-        for h in self.hallucinations:
-            if h in text_lower:
-                # Se for alucinação, ignoramos silenciosamente
-                return
-
-        # 2. Correção Fonética (A Mágica acontece aqui)
-        # O reflexos.py vai trocar "Freigilson" por "Frei Gilson"
-        clean_text = self._apply_phonetic_fix(text)
-        
-        # 3. Envio para o Cérebro
-        self._clear_line()
-        self.log.info(f"🧩 INTENÇÃO RECONHECIDA: '{clean_text}'")
-        bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": clean_text}))
-
-    def _apply_phonetic_fix(self, text: str) -> str:
-        text = text.strip()
-        # Remove pontuação excessiva
-        text = text.replace('.', '').replace(',', '').replace('?', '').replace('!', '')
-        
-        # Chama o módulo de reflexos (JSON/Memória RAM)
-        return reflexos.corrigir(text)
-
-    def _clear_line(self):
-        print("\r" + " " * 100 + "\r", end="")
-
-class WhisperListenService:
-    def __init__(self):
-        self.log = JarvisLogger("BROCA_EARS")
-        self.normalizer = IntentionNormalizer(self.log)
-        self._queue = queue.Queue()
         self._stop_event = threading.Event()
+        self._audio_queue = queue.Queue(maxsize=100) # Proteção contra estouro de memória
+        self._is_listening = False
         self._thread = None
-        self.model = None
-        self._is_jarvis_speaking = False
         
-        bus.inscrever(Eventos.STATUS_FALA, self._on_speech_status)
-        self._load_model()
-
-    def _load_model(self):
-        self.log.info("⏳ Carregando modelo Whisper (Small Int8)...")
         try:
-            self.model = WhisperModel("small", device="cpu", compute_type="int8")
-            self.log.info("✅ Whisper Pronto (VAD Híbrido Ativo).")
+            # 1. Carregamento do Modelo (Pesado)
+            self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
+            
+            # 2. Conexão com Sistema Límbico (Reflexos)
+            self.reflexos = IntentionNormalizer()
+            
+            # 3. Inscrição no Barramento de Eventos
+            # Se o Jarvis estiver falando (TTS), devemos ficar surdos momentaneamente para não nos ouvirmos
+            bus.inscrever(Eventos.STATUS_FALA, self._on_jarvis_speech_status)
+            
+            self._jarvis_speaking = False
+            logger.info("Córtex Auditivo online. Integração: Reflexos + EventBus.")
+            
         except Exception as e:
-            self.log.critical(f"Falha ao carregar Whisper: {e}")
+            logger.critical(f"Falha catastrófica na inicialização do Whisper: {e}")
+            raise
 
-    def _on_speech_status(self, evento: Evento):
-        """Pausa o ouvido quando o Jarvis está falando."""
-        status_anterior = self._is_jarvis_speaking
-        self._is_jarvis_speaking = evento.dados.get("status", False)
-        
-        if self._is_jarvis_speaking and not status_anterior:
-            self._clear_line()
-            print("🛑 JARVIS FALANDO (Ouvido Pausado)...")
-            with self._queue.mutex:
-                self._queue.queue.clear()
-        elif not self._is_jarvis_speaking and status_anterior:
-            print("👂 Ouvido Reativado.")
+    def _on_jarvis_speech_status(self, evento: Evento):
+        """Callback para evitar que o Jarvis ouça a si mesmo (Echo Cancellation ingênuo)."""
+        self._jarvis_speaking = evento.dados.get("status", False)
+        status_str = "FALANDO (Surdez temporária)" if self._jarvis_speaking else "OUVINDO"
+        # logger.debug(f"Estado auditivo alterado: {status_str}")
 
     def _audio_callback(self, indata, frames, time, status):
-        self._queue.put(indata.copy())
+        """Callback de alta prioridade do SoundDevice. NÃO BLOQUEAR AQUI."""
+        if status:
+            logger.warning(f"Status de áudio: {status}")
+        
+        if not self._jarvis_speaking:
+            try:
+                self._audio_queue.put_nowait(indata.copy())
+            except queue.Full:
+                pass # Descarta frames se a fila encher (melhor perder áudio que travar a thread)
 
-    def _clear_line(self):
-        print("\r" + " " * 100 + "\r", end="")
+    def _processar_audio_buffer(self, buffer_float):
+        """Processa o buffer acumulado de áudio e transcreve."""
+        if len(buffer_float) == 0:
+            return
 
-    def _worker(self):
-        self.log.info(f"👂 Monitorando (Gain={GANHO_MIC}x | Limiar={LIMIAR_SILENCIO})...")
+        try:
+            # Concatena e transcreve
+            audio_final = np.concatenate(buffer_float)
+            
+            segments, info = self.model.transcribe(
+                audio_final,
+                beam_size=5,
+                language="pt",
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
+                condition_on_previous_text=False # Evita alucinações de repetição
+            )
+
+            texto_acumulado = []
+            for segment in segments:
+                if segment.no_speech_prob < 0.6: # Filtro de confiança
+                    texto_acumulado.append(segment.text)
+
+            texto_bruto = " ".join(texto_acumulado).strip()
+
+            if texto_bruto:
+                # --- CHECKPOINT DE REFLEXOS ---
+                texto_corrigido = self.reflexos.corrigir_texto(texto_bruto)
+                
+                if texto_corrigido:
+                    logger.info(f"👂 Ouvido: '{texto_corrigido}'")
+                    # Publica para o Cérebro (Orquestrador)
+                    bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": texto_corrigido}))
+                else:
+                    logger.debug(f"Áudio descartado (Reflexo/Blacklist): '{texto_bruto}'")
+
+        except Exception as e:
+            logger.error(f"Erro na transcrição: {e}")
+
+    def _worker_loop(self):
+        """Loop principal de processamento de áudio (Thread separada)."""
+        logger.info("Iniciando loop de captura de áudio...")
         
         buffer_frase = []
         blocos_silencio = 0
         falando = False
         
+        # Context Manager do SoundDevice para garantir fechamento do stream
         with sd.InputStream(samplerate=SAMPLE_RATE, blocksize=BLOCK_SIZE, 
-                            channels=CHANNELS, callback=self._audio_callback, dtype='int16'):
+                          channels=CHANNELS, callback=self._audio_callback, dtype='int16'):
             
             while not self._stop_event.is_set():
                 try:
-                    chunk_int16 = self._queue.get(timeout=0.5)
+                    # Timeout curto para verificar stop_event frequentemente
+                    chunk_int16 = self._audio_queue.get(timeout=0.5) 
                 except queue.Empty:
                     continue
 
-                if self._is_jarvis_speaking:
-                    buffer_frase = []
-                    falando = False
-                    continue
-
-                # Normalização
+                # Normalização e VAD
                 chunk_float = ((chunk_int16.astype(np.float32) / 32768.0) * GANHO_MIC).flatten()
                 volume = np.linalg.norm(chunk_float) / np.sqrt(len(chunk_float))
                 
-                # Visualização
-                bar_len = int(min(volume, 1.0) * 20)
-                bar = "█" * bar_len
-                espaco = " " * (20 - bar_len)
-                estado_visual = "🔴 REC" if falando else "💤 IDLE"
-                if volume > LIMIAR_SILENCIO: estado_visual = "🟢 DETECT"
+                # Visualização ASCII (Feedback visual é importante)
+                self._print_volume_bar(volume, falando)
 
-                print(f"\r🎤 Vol: {volume:.3f} |{bar}{espaco}| {estado_visual}", end="", flush=True)
-
-                # Lógica VAD
                 if volume > LIMIAR_SILENCIO:
-                    if not falando: falando = True
+                    if not falando:
+                        falando = True
+                        # logger.debug("Voz detectada iniciada.")
                     blocos_silencio = 0
                     buffer_frase.append(chunk_float)
                 
@@ -193,60 +151,64 @@ class WhisperListenService:
                     blocos_silencio += 1
                     
                     if blocos_silencio > BLOCOS_PAUSA_FIM:
-                        self._clear_line()
-                        self.log.info("⏳ Processando áudio capturado...")
+                        # Fim de frase detectado
+                        print() # Quebra linha da barra de volume
+                        logger.debug("Silêncio detectado. Processando frase...")
+                        self._processar_audio_buffer(buffer_frase)
                         
-                        if len(buffer_frase) > 0:
-                            audio_final = np.concatenate(buffer_frase)
-                            self._transcrever(audio_final)
-                        
+                        # Reset
                         buffer_frase = []
                         falando = False
                         blocos_silencio = 0
 
-    def _transcrever(self, audio_data):
-        try:
-            # Whisper com VAD interno ativado
-            segments, info = self.model.transcribe(
-                audio_data, 
-                beam_size=5, 
-                language="pt",
-                vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=500),
-                initial_prompt=PROMPT_ATUAL, # Usa o prompt com vocabulário atualizado
-                condition_on_previous_text=False
-            )
-            
-            texto_final = " ".join([s.text for s in segments]).strip()
-            
-            if texto_final:
-                self._clear_line()
-                self.log.info(f"📝 Whisper ouviu: '{texto_final}'")
-                self.normalizer.process(texto_final)
-                
-        except Exception as e:
-            self.log.error(f"Erro transcrição: {e}")
+    def _print_volume_bar(self, volume, falando):
+        """Visualização simples de volume no console."""
+        bar_len = int(min(volume, 1.0) * 20)
+        bar = "█" * bar_len
+        espaco = " " * (20 - bar_len)
+        estado = "🔴 GRAVANDO" if falando else "💤 AGUARDANDO"
+        if self._jarvis_speaking: estado = "🔇 JARVIS FALANDO"
+        
+        sys.stdout.write(f"\r🎤 Vol: {volume:.3f} |{bar}{espaco}| {estado}")
+        sys.stdout.flush()
 
-    def start(self):
+    def iniciar(self):
+        """Inicia a thread de escuta em background."""
         if not self._thread or not self._thread.is_alive():
             self._stop_event.clear()
-            self._thread = threading.Thread(target=self._worker, name="BrocaListener", daemon=True)
+            self._thread = threading.Thread(target=self._worker_loop, name="BrocaWorker", daemon=True)
             self._thread.start()
+            logger.info("Serviço de audição iniciado.")
 
-    def stop(self):
+    def parar(self):
+        """Encerra a thread de escuta graciosamente."""
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2.0)
+        logger.info("Serviço de audição encerrado.")
 
-# Instância Global
-ears = WhisperListenService()
+    # Mantido para retrocompatibilidade e testes manuais
+    def ouvir_arquivo(self, audio_path: str) -> str:
+        """Processa um arquivo estático (útil para debug)."""
+        if not os.path.exists(audio_path): return ""
+        try:
+            segments, _ = self.model.transcribe(audio_path, language="pt", beam_size=5)
+            full_text = " ".join([s.text for s in segments])
+            return self.reflexos.corrigir_texto(full_text)
+        except Exception as e:
+            logger.error(f"Erro em ouvir_arquivo: {e}")
+            return ""
 
+# Bloco de teste
 if __name__ == "__main__":
-    print("Iniciando teste de microfone...")
-    ears.start()
     try:
+        ouvido = OuvidoBiologico(model_size="tiny") # Tiny para boot rápido
+        print("\n--- INICIANDO TESTE DE MICROFONE (CTRL+C para sair) ---")
+        ouvido.iniciar()
+        
         while True:
             time.sleep(1)
+            
     except KeyboardInterrupt:
-        ears.stop()
-        print("Encerrando.")
+        print("\nInterrupção do usuário.")
+        ouvido.parar()
