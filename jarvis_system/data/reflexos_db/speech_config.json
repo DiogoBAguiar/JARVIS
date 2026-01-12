@@ -1,0 +1,15 @@
+{
+    "phonetic_corrections": {
+        "freigilson": "Frei Gilson",
+        "sportfy": "Spotify",
+        "spotifai": "Spotify",
+        "toc": "toque",
+        "tok": "toque"
+    },
+    "blacklisted_phrases": [
+        "obrigado por assistir",
+        "legendas pela comunidade",
+        "subtitles by",
+        "amara.org"
+    ]
+}

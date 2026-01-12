@@ -23,7 +23,7 @@ logger = logging.getLogger("AREA_BROCA_EARS")
 SAMPLE_RATE = 16000
 CHANNELS = 1
 BLOCK_SIZE = 4000
-LIMIAR_SILENCIO = 0.015  # Ajustado para evitar disparos com ruído de fundo (ventoinhas/ar)
+LIMIAR_SILENCIO = 0.015  # Ajustado para evitar disparos com ruído de fundo
 BLOCOS_PAUSA_FIM = 5     # ~1.2 segundos de silêncio para considerar fim de frase
 GANHO_MIC = 5.0          # Multiplicador digital de volume
 
@@ -35,7 +35,7 @@ class OuvidoBiologico:
         logger.info(f"Inicializando Córtex Auditivo (Modelo: {model_size})...")
         
         self._stop_event = threading.Event()
-        self._audio_queue = queue.Queue(maxsize=100) # Proteção contra estouro de memória
+        self._audio_queue = queue.Queue(maxsize=100) # Proteção contra estouro
         self._is_listening = False
         self._thread = None
         
@@ -47,7 +47,6 @@ class OuvidoBiologico:
             self.reflexos = IntentionNormalizer()
             
             # 3. Inscrição no Barramento de Eventos
-            # Se o Jarvis estiver falando (TTS), devemos ficar surdos momentaneamente para não nos ouvirmos
             bus.inscrever(Eventos.STATUS_FALA, self._on_jarvis_speech_status)
             
             self._jarvis_speaking = False
@@ -57,14 +56,25 @@ class OuvidoBiologico:
             logger.critical(f"Falha catastrófica na inicialização do Whisper: {e}")
             raise
 
+    # ---------------------------------------------------------------------
+    # MÉTODOS DE COMPATIBILIDADE COM O KERNEL (ADAPTER)
+    # ---------------------------------------------------------------------
+    def start(self):
+        """Alias para iniciar() - exigido pelo Kernel do main.py."""
+        self.iniciar()
+
+    def stop(self):
+        """Alias para parar() - exigido pelo Kernel do main.py."""
+        self.parar()
+    # ---------------------------------------------------------------------
+
     def _on_jarvis_speech_status(self, evento: Evento):
-        """Callback para evitar que o Jarvis ouça a si mesmo (Echo Cancellation ingênuo)."""
+        """Callback para evitar que o Jarvis ouça a si mesmo."""
         self._jarvis_speaking = evento.dados.get("status", False)
-        status_str = "FALANDO (Surdez temporária)" if self._jarvis_speaking else "OUVINDO"
-        # logger.debug(f"Estado auditivo alterado: {status_str}")
+        # status_str = "FALANDO (Surdez temporária)" if self._jarvis_speaking else "OUVINDO"
 
     def _audio_callback(self, indata, frames, time, status):
-        """Callback de alta prioridade do SoundDevice. NÃO BLOQUEAR AQUI."""
+        """Callback de alta prioridade do SoundDevice."""
         if status:
             logger.warning(f"Status de áudio: {status}")
         
@@ -72,7 +82,7 @@ class OuvidoBiologico:
             try:
                 self._audio_queue.put_nowait(indata.copy())
             except queue.Full:
-                pass # Descarta frames se a fila encher (melhor perder áudio que travar a thread)
+                pass # Descarta frames se a fila encher
 
     def _processar_audio_buffer(self, buffer_float):
         """Processa o buffer acumulado de áudio e transcreve."""
@@ -89,7 +99,8 @@ class OuvidoBiologico:
                 language="pt",
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
-                condition_on_previous_text=False # Evita alucinações de repetição
+                condition_on_previous_text=False
+                
             )
 
             texto_acumulado = []
@@ -105,7 +116,7 @@ class OuvidoBiologico:
                 
                 if texto_corrigido:
                     logger.info(f"👂 Ouvido: '{texto_corrigido}'")
-                    # Publica para o Cérebro (Orquestrador)
+                    # Publica para o Cérebro
                     bus.publicar(Evento(Eventos.FALA_RECONHECIDA, {"texto": texto_corrigido}))
                 else:
                     logger.debug(f"Áudio descartado (Reflexo/Blacklist): '{texto_bruto}'")
@@ -121,13 +132,11 @@ class OuvidoBiologico:
         blocos_silencio = 0
         falando = False
         
-        # Context Manager do SoundDevice para garantir fechamento do stream
         with sd.InputStream(samplerate=SAMPLE_RATE, blocksize=BLOCK_SIZE, 
                           channels=CHANNELS, callback=self._audio_callback, dtype='int16'):
             
             while not self._stop_event.is_set():
                 try:
-                    # Timeout curto para verificar stop_event frequentemente
                     chunk_int16 = self._audio_queue.get(timeout=0.5) 
                 except queue.Empty:
                     continue
@@ -136,13 +145,11 @@ class OuvidoBiologico:
                 chunk_float = ((chunk_int16.astype(np.float32) / 32768.0) * GANHO_MIC).flatten()
                 volume = np.linalg.norm(chunk_float) / np.sqrt(len(chunk_float))
                 
-                # Visualização ASCII (Feedback visual é importante)
                 self._print_volume_bar(volume, falando)
 
                 if volume > LIMIAR_SILENCIO:
                     if not falando:
                         falando = True
-                        # logger.debug("Voz detectada iniciada.")
                     blocos_silencio = 0
                     buffer_frase.append(chunk_float)
                 
@@ -151,12 +158,10 @@ class OuvidoBiologico:
                     blocos_silencio += 1
                     
                     if blocos_silencio > BLOCOS_PAUSA_FIM:
-                        # Fim de frase detectado
                         print() # Quebra linha da barra de volume
                         logger.debug("Silêncio detectado. Processando frase...")
                         self._processar_audio_buffer(buffer_frase)
                         
-                        # Reset
                         buffer_frase = []
                         falando = False
                         blocos_silencio = 0
@@ -187,7 +192,6 @@ class OuvidoBiologico:
             self._thread.join(timeout=2.0)
         logger.info("Serviço de audição encerrado.")
 
-    # Mantido para retrocompatibilidade e testes manuais
     def ouvir_arquivo(self, audio_path: str) -> str:
         """Processa um arquivo estático (útil para debug)."""
         if not os.path.exists(audio_path): return ""
@@ -199,16 +203,32 @@ class OuvidoBiologico:
             logger.error(f"Erro em ouvir_arquivo: {e}")
             return ""
 
-# Bloco de teste
+# ---------------------------------------------------------------------
+# EXPORTAÇÃO PARA O MAIN.PY (ESSENCIAL)
+# ---------------------------------------------------------------------
+# Instanciamos a variável 'ears' no escopo global para que o main.py a encontre.
+try:
+    logger.info("🔧 Instanciando singleton 'ears' para o Sistema...")
+    # Use 'base' para equilíbrio ou 'small' para melhor precisão
+    ears = OuvidoBiologico(model_size="base", device="cpu")
+except Exception as e:
+    logger.error(f"❌ Erro ao instanciar OuvidoBiologico: {e}")
+    ears = None
+
+# ---------------------------------------------------------------------
+# BLOCO DE TESTE
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     try:
-        ouvido = OuvidoBiologico(model_size="tiny") # Tiny para boot rápido
+        if ears is None:
+            ears = OuvidoBiologico(model_size="tiny") 
+            
         print("\n--- INICIANDO TESTE DE MICROFONE (CTRL+C para sair) ---")
-        ouvido.iniciar()
+        ears.iniciar()
         
         while True:
             time.sleep(1)
             
     except KeyboardInterrupt:
         print("\nInterrupção do usuário.")
-        ouvido.parar()
+        if ears: ears.parar()

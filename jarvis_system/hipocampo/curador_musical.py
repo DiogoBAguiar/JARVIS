@@ -8,19 +8,55 @@ from datetime import datetime
 
 # Garante acesso aos módulos internos
 sys.path.append(os.getcwd())
-from jarvis_system.hipocampo.memoria import memoria
+
+# Importação segura da memória
+try:
+    from jarvis_system.hipocampo.memoria import memoria
+except ImportError:
+    memoria = None
 
 class CuradorMusical:
     def __init__(self):
         self.collection = None
-        if memoria._conectar():
+        # Verifica se memória existe e conecta
+        if memoria and memoria._conectar():
             self.collection = memoria.collection
 
     def _log(self, msg):
         print(f"   [CURADOR] {msg}")
 
+    # --- HABILIDADE ESSENCIAL: BUSCA SEMÂNTICA (Adicionado para corrigir o erro) ---
+    def buscar_vetorial(self, query: str, top_k: int = 1) -> list:
+        """
+        Busca músicas na memória por similaridade de texto.
+        Usado pelo Cérebro (Brain) para encontrar músicas vagas.
+        """
+        if not self.collection: return []
+        
+        try:
+            resultados = self.collection.query(
+                query_texts=[query],
+                n_results=top_k
+            )
+            
+            respostas = []
+            if resultados['ids'] and resultados['ids'][0]:
+                for i, meta in enumerate(resultados['metadatas'][0]):
+                    musica = meta.get('musica', 'Desconhecida')
+                    artista = meta.get('artista', 'Desconhecido')
+                    respostas.append(f"{musica} de {artista}")
+            
+            return respostas
+        except Exception as e:
+            self._log(f"Erro na busca vetorial: {e}")
+            return []
+
     # --- HABILIDADE 1: DIAGNÓSTICO E RELATÓRIO ---
     def gerar_relatorio(self):
+        if not self.collection:
+            self._log("Memória desconectada. Não é possível gerar relatório.")
+            return
+
         print("\n📊 [CURADOR] Gerando Relatório 'biblioteca_musical.txt'...")
         dados = self.collection.get()
         metadatas = dados['metadatas']
@@ -45,6 +81,7 @@ class CuradorMusical:
 
     # --- HABILIDADE 2: ENRIQUECIMENTO (ITUNES API) ---
     def buscar_anos_faltantes(self):
+        if not self.collection: return
         print("\n⏳ [CURADOR] Buscando anos e capas na Apple Music/iTunes...")
         dados = self.collection.get()
         ids = dados['ids']
@@ -87,6 +124,7 @@ class CuradorMusical:
     # --- HABILIDADE 3: PATCH MANUAL DE EMERGÊNCIA ---
     def aplicar_patch_manual(self):
         """Corrige manualmente as músicas que a API não encontrou (Matuê, Virais, etc.)"""
+        if not self.collection: return
         print("\n🚑 [CURADOR] Aplicando Patch Manual de Datas (Matuê, Virais, Trilhas)...")
         
         # Gabarito extraído da sua lista de erros
@@ -218,6 +256,7 @@ class CuradorMusical:
 
     # --- HABILIDADE 4: CORREÇÃO DE GÊNEROS ---
     def refinar_generos(self):
+        if not self.collection: return
         print("\n💎 [CURADOR] Refinando Gêneros Musicais (Matuê, Safadão, etc)...")
         MAPA = {
             "Forró/Piseiro": ["Wesley Safadão", "Xand Avião", "João Gomes", "NATTAN", "Barões", "Felipe Amorim", "Tarcísio", "Raí Saia Rodada", "Mari Fernandez", "Avine Vinny"],
@@ -256,17 +295,17 @@ class CuradorMusical:
     # --- HABILIDADE 5: DJ ---
     def tocar_dj(self, comando):
         print(f"\n🎧 [DJ JARVIS] Buscando: '{comando}'")
-        res = self.collection.query(query_texts=[comando], n_results=1)
-        if res['ids'] and res['ids'][0]:
-            meta = res['metadatas'][0][0]
-            print(f"   💿 Tocando: {meta.get('musica')} - {meta.get('artista')} ({meta.get('ano', '')})")
-            if meta.get('preview_url'): webbrowser.open(meta.get('preview_url'))
-            elif meta.get('capa_url'): webbrowser.open(meta.get('capa_url'))
+        res = self.buscar_vetorial(comando, top_k=1)
+        if res:
+             self._log(f"Sugestão da memória: {res[0]}")
+             # Aqui você poderia adicionar a lógica para abrir no navegador se desejar
+             # Por enquanto, apenas mostra a sugestão para alinhar com o uso no Brain
         else:
-            self._log("Nada encontrado.")
+             self._log("Nada encontrado.")
 
     # --- HABILIDADE 6: FAXINA DE LIXO ---
     def remover_lixo(self):
+        if not self.collection: return
         print("\n🧹 [CURADOR] Removendo registros inválidos...")
         lixo = self.collection.get(where={"artista": "Videoclipe"})
         if lixo['ids']:

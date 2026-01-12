@@ -96,7 +96,7 @@ class Hipocampo:
         )
 
     # =======================
-    # Escrita
+    # Escrita (Música)
     # =======================
 
     def memorizar_musica(
@@ -142,6 +142,58 @@ class Hipocampo:
             )
 
     # =======================
+    # Escrita (Episódica) - NOVO
+    # =======================
+
+    def memorizar_episodio(
+        self,
+        agente: str,
+        acao: str,
+        resultado: str, # "SUCESSO" ou "FALHA"
+        emocao_associada: str,
+        detalhes: str = ""
+    ) -> None:
+        """
+        Armazena uma experiência vivida por um agente (glandula/membro).
+        Permite que o sistema aprenda com erros passados.
+        """
+        if not self._conectar():
+            return
+
+        timestamp = datetime.datetime.utcnow().isoformat()
+        
+        # Cria um texto descritivo para busca semântica
+        documento = (
+            f"Episódio do agente {agente}: Tentativa de '{acao}'. "
+            f"Resultado: {resultado}. O agente sentiu-se {emocao_associada}. "
+            f"Detalhes: {detalhes}"
+        )
+
+        metadados = {
+            "tipo": "episodio_agente",
+            "agente": agente,
+            "acao": acao,
+            "resultado": resultado, # Útil para filtrar apenas FALHAS depois
+            "emocao": emocao_associada,
+            "timestamp": timestamp
+        }
+
+        try:
+            # Gera um ID único para o evento
+            evento_id = f"evt_{agente}_{uuid.uuid4().hex[:8]}"
+            
+            # Usamos .add() pois eventos são únicos e sequenciais, raramente atualizados
+            self.collection.add(
+                documents=[documento],
+                metadatas=[metadados],
+                ids=[evento_id]
+            )
+            log.info(f"🧠 Memória episódica gravada: {agente} -> {acao} ({resultado})")
+
+        except Exception as exc:
+            log.error(f"❌ Erro ao gravar episódio no hipocampo: {exc}")
+
+    # =======================
     # Leitura
     # =======================
 
@@ -175,6 +227,18 @@ class Hipocampo:
         except Exception as exc:
             log.error(f"❌ Falha na recuperação semântica: {exc}")
             return []
+
+    def consultar_experiencia_passada(self, agente: str, acao: str) -> List[str]:
+        """
+        O agente pergunta ao cérebro: "Já fiz isto antes? Deu errado?"
+        Retorna snippets de experiências similares.
+        """
+        if not self._conectar(): return []
+        
+        # Busca semântica focada em falhas ou erros nesse contexto
+        query = f"experiência {agente} executando {acao} falha erro frustração"
+        
+        return self.relembrar(query, limite=2)
 
     # =======================
     # Status
