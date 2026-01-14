@@ -3,6 +3,7 @@ import re
 import os
 import logging
 from typing import Dict, List, Optional
+from difflib import SequenceMatcher
 
 # Configuração de Logs Específica para o Módulo
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -11,7 +12,7 @@ logger = logging.getLogger("HIPOCAMPO_REFLEXOS")
 class IntentionNormalizer:
     """
     Módulo responsável pela correção fonética e normalização de intenções
-    baseado em memória rápida (JSON) e padrões regex.
+    baseado em memória rápida (JSON) e padrões regex + estatística (fuzzy).
     Atua como um filtro pré-cortical (antes da LLM).
     """
     
@@ -38,6 +39,8 @@ class IntentionNormalizer:
                         "freigilson": "Frei Gilson",
                         "sportfy": "Spotify",
                         "spotifai": "Spotify",
+                        "potfari": "Spotify",  # <--- Adicionado para corrigir seu log
+                        "abris": "abrir",      # <--- Adicionado para corrigir seu log
                         "toc": "toque",
                         "tok": "toque"
                     },
@@ -64,11 +67,9 @@ class IntentionNormalizer:
             raw_corrections = data.get("phonetic_corrections", {})
             self.phonetic_map = raw_corrections
             
-            # Pré-compilação de Regex para performance (evita recompilar a cada fala)
+            # Pré-compilação de Regex para performance
             self.regex_patterns = []
             for wrong, correct in raw_corrections.items():
-                # Lookaround para garantir que não estamos substituindo parte de uma palavra correta
-                # Ex: evitar que "toca" vire "toquea" se o padrão for "toc" -> "toque"
                 pattern = re.compile(rf'\b{re.escape(wrong)}\b', re.IGNORECASE)
                 self.regex_patterns.append((pattern, correct))
                 
@@ -82,38 +83,51 @@ class IntentionNormalizer:
             self.regex_patterns = []
             self.blacklist = []
 
-    def corrigir_texto(self, texto: str) -> str:
-        """
-        Aplica correções fonéticas instantâneas no texto transcrito.
-        """
-        if not texto or not isinstance(texto, str):
-            return ""
+    def _fuzzy_replace(self, texto: str, threshold=0.75) -> str:
+        """Tenta encontrar trechos do texto que se assemelham estatisticamente."""
+        texto_final = texto
+        palavras = texto.split()
+        if not palavras: return texto
+        
+        for errado, correto in self.phonetic_map.items():
+            n_words = len(errado.split())
+            for i in range(len(palavras) - n_words + 1):
+                trecho_lista = palavras[i : i + n_words]
+                trecho_str = " ".join(trecho_lista)
+                
+                similaridade = SequenceMatcher(None, trecho_str.lower(), errado.lower()).ratio()
+                
+                if similaridade >= threshold:
+                    logger.info(f"✨ Correção Estatística: '{trecho_str}' ({similaridade:.2f}) -> '{correto}'")
+                    texto_final = texto_final.replace(trecho_str, correto, 1)
+                    palavras = texto_final.split()
+                    break 
+        return texto_final
 
+    def corrigir_texto(self, texto: str) -> str:
+        if not texto or not isinstance(texto, str): return ""
         texto_processado = texto.strip()
 
-        # 1. Filtro de Alucinações (Blacklist)
         for pattern in self.blacklist:
-            if pattern.search(texto_processado):
-                logger.warning(f"Alucinação de áudio detectada e descartada: '{texto_processado}'")
-                return "" # Retorna vazio para descartar o comando
+            if pattern.search(texto_processado): return ""
 
-        # 2. Correção Fonética
         original = texto_processado
         try:
             for pattern, correction in self.regex_patterns:
                 texto_processado = pattern.sub(correction, texto_processado)
             
+            texto_processado = self._fuzzy_replace(texto_processado)
+
             if original != texto_processado:
                 logger.info(f"Reflexo acionado: '{original}' -> '{texto_processado}'")
                 
         except Exception as e:
-            logger.error(f"Erro durante processamento de regex: {e}. Retornando texto original.")
+            logger.error(f"Erro: {e}")
             return original
 
         return texto_processado
 
     def adicionar_correcao(self, errado: str, correto: str) -> bool:
-        """Adiciona uma nova correção à memória persistente."""
         try:
             with open(self.config_file, 'r+', encoding='utf-8') as f:
                 data = json.load(f)
@@ -121,10 +135,15 @@ class IntentionNormalizer:
                 f.seek(0)
                 json.dump(data, f, indent=4, ensure_ascii=False)
                 f.truncate()
-            
-            # Recarrega memória
             self._load_memory()
             return True
         except Exception as e:
-            logger.error(f"Falha ao persistir nova correção: {e}")
+            logger.error(f"Falha ao persistir: {e}")
             return False
+
+# --- EXPORTAÇÃO SINGLETON (ESSENCIAL PARA O ORCHESTRATOR) ---
+try:
+    reflexos = IntentionNormalizer()
+except Exception as e:
+    logger.error(f"❌ Erro fatal ao iniciar Reflexos: {e}")
+    reflexos = None

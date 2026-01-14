@@ -19,9 +19,7 @@ logger = logging.getLogger("SPOTIFY_BRAIN")
 
 class SpotifyBrain:
     """
-    Cérebro Especialista em Música (Versão JSON Puro).
-    Evita o uso de 'Tools' nativas da API para prevenir erros de XML.
-    O Cérebro apenas decide o JSON, e este código executa.
+    Cérebro Especialista em Música (Versão Híbrida: LLM + Verificação DB + Correção Fonética).
     """
 
     def __init__(self, controller, consciencia):
@@ -30,7 +28,6 @@ class SpotifyBrain:
         self.toolkit = SpotifyToolkit(controller, consciencia)
         self.limbic = LimbicSystem(controller)
         
-        # Modelo mais robusto para JSON
         self.model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         self.agent = self._inicializar_agno()
 
@@ -46,57 +43,72 @@ class SpotifyBrain:
 
         return Agent(
             model=llm,
-            description="Você é o Cérebro do Spotify Jarvis. Você recebe um comando e decide qual função JSON retornar.",
+            description="Você é o Cérebro do Spotify Jarvis. Decida a ação JSON.",
             instructions=[
-                "Analise o pedido do usuário e retorne APENAS um JSON válido.",
-                "Não escreva nada antes ou depois do JSON.",
-                "Formatos possíveis:",
-                '1. {"acao": "consultar_memoria", "termo": "..."} -> Se o pedido for vago (ex: tocar rock, tocar algo animado).',
-                '2. {"acao": "tocar", "musica": "..."} -> Se o pedido for específico (ex: tocar Queen, tocar Anitta).',
-                '3. {"acao": "comando", "tipo": "play/pause/next/prev"} -> Para controles de playback.',
-                '4. {"acao": "abrir"} -> Para abrir o Spotify.'
+                "Retorne APENAS um JSON válido.",
+                "Formatos:",
+                '1. {"acao": "tocar", "termo": "...", "tipo_estimado": "musica/artista"} -> Para pedidos de play.',
+                '   - Use "tipo_estimado": "artista" se parecer um cantor/banda.',
+                '   - Use "tipo_estimado": "musica" se parecer uma faixa.',
+                '2. {"acao": "consultar_memoria", "termo": "..."} -> Pedidos vagos (ex: tocar algo triste).',
+                '3. {"acao": "comando", "tipo": "play/pause/next/prev"}',
+                '4. {"acao": "abrir"}'
             ],
             markdown=False,
-            # SEM TOOLS! Vamos fazer o routing manualmente.
         )
 
     def processar(self, comando: str) -> str:
-        """Pipeline de Execução Manual."""
         if not comando: return ""
         if not self.agent: return self.limbic.reagir_instintivamente(comando)
 
         try:
             logger.info(f"🧠 [Córtex] Analisando: '{comando}'")
             
-            # 1. Pede decisão para a IA
             resposta = self.agent.run(comando)
             texto_resp = getattr(resposta, 'content', str(resposta))
-            
-            # Limpa markdown de código json ```json ... ```
             texto_limpo = texto_resp.replace("```json", "").replace("```", "").strip()
             
-            # 2. Parse do JSON
             decisao = json.loads(texto_limpo)
-            logger.info(f"🤔 Decisão: {decisao}")
+            logger.info(f"🤔 Decisão Inicial IA: {decisao}")
 
-            # 3. Roteamento (Router)
             acao = decisao.get("acao")
             
-            if acao == "consultar_memoria":
+            if acao == "tocar":
+                termo = decisao.get("termo") or decisao.get("musica")
+                tipo_ia = decisao.get("tipo_estimado", "musica").lower()
+                
+                # --- INTELIGÊNCIA HÍBRIDA (NOVO BLOCO) ---
+                
+                # 1. Verifica no Banco de Dados (Soberania Local)
+                is_artist_db = self.toolkit.verificar_se_artista(termo)
+                
+                if is_artist_db:
+                    logger.info(f"📚 Confirmado pelo Banco: '{termo}' é um ARTISTA.")
+                    tipo_final = "artista"
+                else:
+                    # 2. Tenta Correção Fonética (O pulo do gato!)
+                    correcao = self.toolkit.sugerir_correcao(termo)
+                    
+                    if correcao:
+                        logger.info(f"✨ Erro de audição corrigido: '{termo}' -> '{correcao}'")
+                        termo = correcao # Substitui "Freio Gil Som" por "Frei Gilson"
+                        tipo_final = "artista" # Se corrigiu pelo banco de artistas, é artista
+                    else:
+                        # 3. Fallback: Confia na IA
+                        logger.info(f"🌐 Não encontrado no banco. Usando intuição da IA: {tipo_ia}")
+                        tipo_final = tipo_ia
+                
+                return self.toolkit.tocar_musica(termo, tipo=tipo_final)
+
+            elif acao == "consultar_memoria":
                 termo = decisao.get("termo")
-                # Chama a memória manualmente
                 sugestao = self.toolkit.consultar_memoria_musical(termo)
                 logger.info(f"💡 Memória sugeriu: {sugestao}")
-                # Se a memória devolveu algo útil, toca. Se não, busca o termo original.
                 if "Encontrei" in sugestao:
-                    # Extrai o nome da música da resposta da tool (hack rápido)
                     musica_final = sugestao.split("'")[1] if "'" in sugestao else termo
-                    return self.toolkit.tocar_musica(musica_final)
+                    return self.toolkit.tocar_musica(musica_final, tipo="musica")
                 else:
-                    return self.toolkit.tocar_musica(termo)
-
-            elif acao == "tocar":
-                return self.toolkit.tocar_musica(decisao.get("musica"))
+                    return self.toolkit.tocar_musica(termo, tipo="musica")
             
             elif acao == "comando":
                 tipo = decisao.get("tipo")
@@ -110,9 +122,8 @@ class SpotifyBrain:
             return "Comando não compreendido."
 
         except json.JSONDecodeError:
-            logger.warning(f"⚠️ IA não retornou JSON válido: {texto_resp}")
+            logger.warning(f"⚠️ IA não retornou JSON válido.")
             return self.limbic.reagir_instintivamente(comando)
-            
         except Exception as e:
             logger.error(f"🔥 Erro no Router: {e}")
             return self.limbic.reagir_instintivamente(comando)

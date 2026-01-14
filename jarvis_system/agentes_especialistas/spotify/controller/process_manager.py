@@ -49,10 +49,16 @@ class SpotifyProcessManager:
         for i in range(20): # Espera até 20 segundos (aumentado)
             hwnd = self._verificar_janela_existente()
             if hwnd:
-                time.sleep(1.5) # Espera a UI carregar totalmente
+                # --- CORREÇÃO DE WARM-UP ---
+                # O Spotify cria a janela antes de carregar o motor de busca (React/Web).
+                # Aumentamos de 1.5s para 5.0s para evitar digitar no vazio.
+                logger.info("⏳ [Process] Janela detectada. Aguardando renderização da UI (Warm-up)...")
+                time.sleep(5.0) 
+                
                 self.window.focar(hwnd)
                 logger.info("✅ [Process] Spotify carregado com sucesso.")
                 return True
+            
             time.sleep(1)
             if i % 5 == 0: logger.debug("   ...aguardando janela...")
 

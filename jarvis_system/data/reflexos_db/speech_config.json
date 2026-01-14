@@ -1,10 +1,10 @@
-{
-    "phonetic_corrections": {
-        "freigilson": "Frei Gilson",
-        "sportfy": "Spotify",
-        "spotifai": "Spotify",
-        "toc": "toque",
-        "tok": "toque"
+{"phonetic_corrections": {
+        "javis": "Jarvis",
+        "jogues": "Jarvis",
+        "fregir o som": "Frei Gilson",
+        "frege o som": "Frei Gilson",
+        "freiz de o som": "Frei Gilson",
+        "toc": "tocar"
     },
     "blacklisted_phrases": [
         "obrigado por assistir",
