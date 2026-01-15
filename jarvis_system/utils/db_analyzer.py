@@ -1,7 +1,7 @@
 import os
 import sys
 import collections
-import re # <--- Importante para separar os nomes
+import re
 from tabulate import tabulate
 
 # --- AJUSTE DE PATH ---
@@ -23,8 +23,17 @@ def limpar_terminal():
 class DatabaseAnalyzer:
     def __init__(self):
         print("🔌 Conectando ao Hipocampo...")
+        
+        # --- DIAGNÓSTICO FÍSICO (Herdado do antigo gerenciador) ---
+        if hasattr(memoria, 'db_path') and os.path.exists(memoria.db_path):
+            arquivos = os.listdir(memoria.db_path)
+            if "chroma.sqlite3" in arquivos:
+                print(f"   ✅ Arquivo físico do banco encontrado em: {memoria.db_path}")
+            else:
+                print(f"   ⚠️  Pasta existe, mas 'chroma.sqlite3' não encontrado.")
+        
         if not memoria or not memoria._conectar():
-            print("❌ Erro: Falha na conexão com o banco de dados.")
+            print("❌ Erro: Falha na conexão lógica com o ChromaDB.")
             self.collection = None
         else:
             self.collection = memoria.collection
@@ -35,15 +44,16 @@ class DatabaseAnalyzer:
         while True:
             limpar_terminal()
             count = self.collection.count()
-            print("📊 J.A.R.V.I.S. - ANALISADOR DE DADOS (V2)")
+            print("📊 J.A.R.V.I.S. - ANALISADOR DE DADOS (V3 FINAL)")
             print("==============================================")
             print(f"📦 Total de Registros: {count}")
             print("==============================================")
-            print("1. 🏆 Top Artistas Individuais (Separa Feats)")
+            print("1. 🏆 Top Artistas (Individuais)")
             print("2. 🔍 Inspecionar Dados (Amostragem)")
-            print("3. 🧪 Testar Busca Semântica")
-            print("4. 📋 Verificar Integridade")
-            print("5. 🗑️  Deletar Item por ID")
+            print("3. 🏷️  Estatísticas de Tags (Legacy)")
+            print("4. 🧪 Testar Busca Semântica")
+            print("5. 📋 Verificar Integridade")
+            print("6. 🗑️  Deletar Item por ID")
             print("0. 🔙 Sair")
             print("==============================================")
             
@@ -51,13 +61,14 @@ class DatabaseAnalyzer:
 
             if opt == "1": self.mostrar_estatisticas()
             elif opt == "2": self.mostrar_amostra()
-            elif opt == "3": self.testar_busca()
-            elif opt == "4": self.verificar_metadados()
-            elif opt == "5": self.deletar_item()
+            elif opt == "3": self.mostrar_tags_legacy()
+            elif opt == "4": self.testar_busca()
+            elif opt == "5": self.verificar_metadados()
+            elif opt == "6": self.deletar_item()
             elif opt == "0": break
 
     def mostrar_estatisticas(self):
-        print("\n⏳ Processando e separando artistas... (Aguarde)")
+        print("\n⏳ Processando e separando artistas...")
         data = self.collection.get()
         metadatas = data['metadatas']
         
@@ -65,25 +76,21 @@ class DatabaseAnalyzer:
         generos = []
 
         for meta in metadatas:
-            # GÊNEROS (Simples)
+            # GÊNEROS
             if meta.get('genero'): 
                 generos.append(meta['genero'])
 
-            # ARTISTAS (Lógica Inteligente de Separação)
+            # ARTISTAS (Separação Inteligente)
             raw_artist = meta.get('artista', '')
             if raw_artist:
                 # Quebra a string onde tiver vírgula, & ou "feat"
-                # Ex: "Frei Gilson, Bruna Ramos" -> ["Frei Gilson", "Bruna Ramos"]
                 partes = re.split(r',|&| feat\. | ft\. ', raw_artist, flags=re.IGNORECASE)
-                
                 for p in partes:
                     nome_limpo = p.strip()
-                    # Filtra lixo (strings vazias ou muito curtas que não sejam siglas)
                     if len(nome_limpo) > 1:
                         artistas_individuais.append(nome_limpo)
 
-        print("\n🏆 TOP 20 ARTISTAS INDIVIDUAIS (Contagem Real):")
-        # Agora o Frei Gilson vai somar todas as aparições!
+        print("\n🏆 TOP 20 ARTISTAS INDIVIDUAIS:")
         self._print_top_table(artistas_individuais, 20, "Artista")
 
         print("\n🎸 DISTRIBUIÇÃO DE GÊNEROS:")
@@ -95,15 +102,30 @@ class DatabaseAnalyzer:
         counter = collections.Counter(data_list)
         common = counter.most_common(limit)
         table = [[i+1, k, v] for i, (k, v) in enumerate(common)]
-        print(tabulate(table, headers=["#", label, "Participações"], tablefmt="fancy_grid"))
+        print(tabulate(table, headers=["#", label, "Qtd"], tablefmt="fancy_grid"))
+
+    def mostrar_tags_legacy(self):
+        print("\n📊 Analisando Tags (Contextos)...")
+        data = self.collection.get()
+        metadatas = data['metadatas']
+        
+        tags = []
+        for meta in metadatas:
+            t = meta.get('tags', 'sem_tag')
+            tags.append(t)
+            
+        counter = collections.Counter(tags)
+        table = [[k, v] for k, v in counter.most_common()]
+        
+        print(tabulate(table, headers=["Tag/Contexto", "Quantidade"], tablefmt="fancy_grid"))
+        input("\n[Enter] para voltar...")
 
     def mostrar_amostra(self):
         try:
-            n = int(input("\nQuantos itens deseja ver? (Padrão 10): ") or 10)
+            n = int(input("\nQtd? (10): ") or 10)
         except: n = 10
         
         results = self.collection.get(limit=n)
-        
         table = []
         for i, meta in enumerate(results['metadatas']):
             id_ = results['ids'][i]
@@ -119,54 +141,36 @@ class DatabaseAnalyzer:
             ])
         
         print(f"\n🔍 Últimos {len(table)} itens adicionados:")
-        print(tabulate(table, headers=["ID", "Música", "Artista (Raw)", "Gênero", "Ano"], tablefmt="grid"))
+        print(tabulate(table, headers=["ID", "Música", "Artista", "Gênero", "Ano"], tablefmt="grid"))
         input("\n[Enter] para voltar...")
 
     def testar_busca(self):
-        query = input("\n🧠 Digite o termo para busca (Ex: 'musica triste'): ")
+        query = input("\n🧠 Termo: ")
         if not query: return
 
         k = 5
         results = self.collection.query(query_texts=[query], n_results=k)
         
-        print(f"\n🎯 Resultados para: '{query}'")
-        print("-" * 60)
-        
-        ids = results['ids'][0]
-        # dists = results['distances'][0] # Opcional
-        metas = results['metadatas'][0]
-        docs = results['documents'][0]
-
-        for i in range(len(ids)):
-            print(f"#{i+1}")
-            print(f"   🎵 {metas[i].get('musica')} - {metas[i].get('artista')}")
-            print(f"   🏷️  {metas[i].get('genero')} | {metas[i].get('ano')}")
-            print(f"   📄 Doc: {docs[i]}")
-            print("-" * 60)
+        for i in range(len(results['ids'][0])):
+            m = results['metadatas'][0][i]
+            print(f"#{i+1} {m.get('musica')} - {m.get('artista')} ({m.get('genero')})")
         
         input("\n[Enter] para voltar...")
 
     def verificar_metadados(self):
-        print("\n📋 Verificando consistência...")
+        print("\n📋 Verificando...")
         data = self.collection.get()
-        metadatas = data['metadatas']
-        
-        campos_esperados = {'musica', 'artista', 'genero', 'ano', 'album'}
-        problemas = 0
-        
-        for i, meta in enumerate(metadatas):
-            chaves = set(meta.keys())
-            faltantes = campos_esperados - chaves
-            if faltantes:
-                print(f"⚠️  {data['ids'][i]} incompleto. Faltam: {faltantes}")
-                problemas += 1
-        
-        if problemas == 0: print("✅ Tudo 100%.")
-        else: print(f"❌ {problemas} erros encontrados.")
+        campos = {'musica', 'artista', 'genero', 'ano'}
+        prob = 0
+        for i, m in enumerate(data['metadatas']):
+            if campos - set(m.keys()):
+                print(f"⚠️ {data['ids'][i]} incompleto.")
+                prob += 1
+        print(f"Fim. {prob} problemas.")
         input("\n[Enter] para voltar...")
 
     def deletar_item(self):
-        id_alvo = input("\n🗑️  ID para deletar: ")
+        id_alvo = input("\n🗑️  ID: ")
         if not id_alvo: return
         
         if input("Confirma? (s/n): ").lower() == 's':
