@@ -1,15 +1,118 @@
-{"phonetic_corrections": {
+{
+    "phonetic_corrections": {
         "javis": "Jarvis",
-        "jogues": "Jarvis",
-        "fregir o som": "Frei Gilson",
+        "jarbas": "Jarvis",
+        "jobis": "Jarvis",
+        "já vez": "Jarvis",
+        "já toca": "Jarvis tocar",
+        "já tocar": "Jarvis tocar",
+
+        "freiz de uso": "Frei Gilson",
         "frege o som": "Frei Gilson",
-        "freiz de o som": "Frei Gilson",
-        "toc": "tocar"
+        "fregir o som": "Frei Gilson",
+        "freio de o som": "Frei Gilson",
+        "freio gil som": "Frei Gilson",
+        "frei gilson": "Frei Gilson",
+
+        "sportfy": "Spotify",
+        "spotifai": "Spotify",
+
+        "code play": "Coldplay",
+        "com o de play": "Coldplay",
+        "cold play": "Coldplay",
+        "coude plei": "Coldplay",
+
+        "ueekend": "The Weeknd",
+        "de uiquend": "The Weeknd",
+        "twi": "The Weeknd",
+
+        "red hot": "Red Hot Chili Peppers",
+        "pimentas vermelhas": "Red Hot Chili Peppers",
+
+        "imagine dragon": "Imagine Dragons",
+        "dragons": "Imagine Dragons",
+
+        "guns": "Guns N' Roses",
+        "gans": "Guns N' Roses",
+
+        "charlie brown": "Charlie Brown Jr.",
+        "cbjr": "Charlie Brown Jr.",
+
+        "link park": "Linkin Park",
+        "linkin": "Linkin Park",
+
+        "ac dc": "AC/DC",
+        "a ce de ce": "AC/DC",
+
+        "asap": "A$AP Rocky",
+        "a sap": "A$AP Rocky",
+
+        "um kilo": "1Kilo",
+        "1 kilo": "1Kilo",
+
+        "wiu": "WIU",
+        "uil": "WIU",
+        "will": "WIU",
+
+        "veigh": "Veigh",
+        "vei": "Veigh",
+        "veio": "Veigh",
+
+        "xama": "Xamã",
+        "chama": "Xamã",
+
+        "matue": "Matuê",
+        "mato e": "Matuê",
+        "mato a": "Matuê",
+
+        "teto": "Teto",
+        "tato": "Teto",
+
+        "sidoka": "Sidoka",
+        "cidoca": "Sidoka",
+
+        "twenty one pilots": "Twenty One Pilots",
+        "vinte e um pilotos": "Twenty One Pilots",
+
+        "baroes da pisadinha": "Os Barões da Pisadinha",
+        "baroes": "Os Barões da Pisadinha",
+
+        "wesley": "Wesley Safadão",
+        "safadao": "Wesley Safadão",
+
+        "marilia": "Marília Mendonça",
+        "rainha da sofrencia": "Marília Mendonça",
+
+        "gustavo lima": "Gusttavo Lima",
+        "gustavo": "Gusttavo Lima",
+
+        "jorge e mateus": "Jorge & Mateus",
+        "jorge mateus": "Jorge & Mateus",
+
+        "zeneto e cristiano": "Zé Neto & Cristiano",
+        "ze neto": "Zé Neto & Cristiano",
+
+        "maneva": "Maneva",
+        "natiruts": "Natiruts",
+        
+        "system": "System of a Down",
+        "sistem": "System of a Down",
+
+        "foo fighters": "Foo Fighters",
+        "fu fighters": "Foo Fighters",
+
+        "arctic monkeys": "Arctic Monkeys",
+        "artic monkeys": "Arctic Monkeys",
+
+        "gorillaz": "Gorillaz",
+        "gorila": "Gorillaz"
     },
     "blacklisted_phrases": [
         "obrigado por assistir",
         "legendas pela comunidade",
         "subtitles by",
-        "amara.org"
+        "amara.org",
+        "criado por",
+        "legendado por"
     ]
 }

@@ -10,8 +10,6 @@ from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
 # --- DEPENDÊNCIAS ---
-# Removemos o try/except genérico para expor erros reais de importação se houverem,
-# mas mantemos verificações de segurança no código.
 try:
     from jarvis_system.cortex_motor.tool_registry import registry
     from jarvis_system.cortex_motor.launcher import launcher 
@@ -23,7 +21,7 @@ except ImportError as e:
     registry, launcher, llm, curiosity, reflexos = None, None, None, None, None
 
 # --- CONFIGURAÇÃO COGNITIVA ---
-WAKE_WORDS = ["jarvis", "jarbas", "computer", "sexta-feira"]
+WAKE_WORDS = ["jarvis", "jarbas", "computer", "sexta-feira", "javis", "jardis"]
 CONFIRMATION_YES = ["sim", "pode", "pode ser", "isso", "vai", "confirma", "abre", "ok", "claro", "positivo"]
 CONFIRMATION_NO = ["não", "cancela", "errado", "esquece", "nada a ver", "negativo"]
 MEMORY_TRIGGERS = ["memorize", "memoriza", "aprenda", "aprende", "grave", "lembre-se", "anote"]
@@ -36,7 +34,7 @@ class Orchestrator:
         self.contexto_pendente: Optional[dict] = None  
         
         bus.inscrever(Eventos.FALA_RECONHECIDA, self.processar_input)
-        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v2.8 - Fallback Spotify).")
+        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v3.1 - Fix Crash + Prioridade Música).")
 
     def start(self): pass
     def stop(self): pass
@@ -116,7 +114,10 @@ class Orchestrator:
             if match:
                 erro, correcao = match.group(1).strip(), match.group(2).strip()
                 if reflexos:
-                    self._falar(reflexos.aprender(erro, correcao))
+                    # FIX: Nome do método corrigido de 'aprender' para 'adicionar_correcao'
+                    sucesso = reflexos.adicionar_correcao(erro, correcao)
+                    msg = f"Entendido. '{erro}' agora é '{correcao}'." if sucesso else "Erro ao gravar reflexo."
+                    self._falar(msg)
                 else:
                     self._falar("Memória offline.")
                 return True
@@ -143,7 +144,8 @@ class Orchestrator:
             self._falar(f"Entendido. Abrindo {dados['alvo_real']} e aprendendo.")
             if launcher: launcher.abrir_por_caminho(app_info.get('caminho'))
             if reflexos:
-                reflexos.aprender(dados['termo_original'].split()[0], dados['alvo_real'].lower())
+                # FIX: Nome do método corrigido
+                reflexos.adicionar_correcao(dados['termo_original'].split()[0], dados['alvo_real'].lower())
         self.contexto_pendente = None
         self._ultima_ativacao = time.time()
 
@@ -163,45 +165,46 @@ class Orchestrator:
 
     # --- ETAPA 4: FERRAMENTAS (COM FALLBACK PARA SPOTIFY) ---
     def _handle_tools(self, texto: str) -> bool:
-        # Se launcher for None aqui, o import falhou lá em cima.
         if not launcher: 
             self.log.warning("Launcher está None. Verifique imports.")
 
         if registry:
-            # 1. Verifica Agente Nominal
-            nome_agente = registry.identificar_agente(texto)
-            if nome_agente:
-                self.log.info(f"🕵️ Agente acionado: {nome_agente}")
-                self._falar(str(registry.execute(nome_agente, comando=texto)))
-                return True
-
-            # 2. Lógica Especializada para Música (Spotify)
-            if texto.startswith("tocar ") or texto.startswith("toca "):
-                self.log.info("🎵 Verbo de música detectado. Tentando Agente Spotify...")
+            # --- 1. PRIORIDADE MÁXIMA PARA MÚSICA (CORREÇÃO DE ROTEAMENTO) ---
+            # Verifica se é música ANTES de perguntar ao registro geral.
+            # Isso impede que o agente 'media' capture o comando 'tocar'.
+            verbos_musica = ["tocar ", "toca ", "ouvir ", "bota ", "põe ", "toka ", "escute ", "reproduzir "]
+            
+            if any(texto.startswith(p) for p in verbos_musica):
+                self.log.info("🎵 Verbo de música detectado. Forçando Agente Spotify...")
                 
                 # A) Tenta executar via Agente Especialista
                 resultado = registry.execute("spotify", comando=texto)
                 resp_str = str(resultado).lower()
                 
-                # B) Lógica de Fallback: Se o agente reclamar, usamos a força bruta (Launcher)
-                # Palavras chaves de erro comuns: "offline", "fechado", "erro", "não encontrei"
+                # B) Lógica de Fallback
                 erros_comuns = ["offline", "sem internet", "fechado", "não está rodando", "erro"]
                 
                 if any(err in resp_str for err in erros_comuns) and launcher:
                     self.log.info("⚠️ Agente falhou/offline. Acionando Fallback Launcher.")
-                    self._falar("O Spotify parece fechado. Vou abri-lo para você.")
+                    self._falar("O Spotify parece fechado. Vou abri-lo.")
                     
-                    # Tenta abrir o aplicativo diretamente
                     status, nome, caminho = launcher.buscar_candidato("spotify")
                     if caminho:
                         launcher.abrir_por_caminho(caminho)
                         return True
                     else:
-                        self._falar("E não encontrei o aplicativo instalado.")
+                        self._falar("Não encontrei o aplicativo instalado.")
                         return True
                 
-                # Se deu tudo certo ou o erro não é recuperável
                 self._falar(str(resultado))
+                return True
+
+            # --- 2. Verifica Agente Nominal (Genérico) ---
+            # Só executa isso se NÃO for um comando explícito de música detectado acima
+            nome_agente = registry.identificar_agente(texto)
+            if nome_agente:
+                self.log.info(f"🕵️ Agente acionado: {nome_agente}")
+                self._falar(str(registry.execute(nome_agente, comando=texto)))
                 return True
 
         # 3. Comandos de Sistema Operacional (Launcher Genérico)

@@ -77,24 +77,27 @@ class SpotifyBrain:
                 termo = decisao.get("termo") or decisao.get("musica")
                 tipo_ia = decisao.get("tipo_estimado", "musica").lower()
                 
-                # --- INTELIGÊNCIA HÍBRIDA (NOVO BLOCO) ---
+                # --- INTELIGÊNCIA HÍBRIDA (CURADORIA) ---
                 
                 # 1. Verifica no Banco de Dados (Soberania Local)
+                # Garante que se o artista existe no speech_config, o tipo é forçado para 'artista'
                 is_artist_db = self.toolkit.verificar_se_artista(termo)
                 
                 if is_artist_db:
                     logger.info(f"📚 Confirmado pelo Banco: '{termo}' é um ARTISTA.")
                     tipo_final = "artista"
                 else:
-                    # 2. Tenta Correção Fonética (O pulo do gato!)
+                    # 2. Tenta Correção Fonética
+                    # Aqui usamos o cutoff alto (0.85) definido no toolkit/fuzzy
                     correcao = self.toolkit.sugerir_correcao(termo)
                     
                     if correcao:
                         logger.info(f"✨ Erro de audição corrigido: '{termo}' -> '{correcao}'")
-                        termo = correcao # Substitui "Freio Gil Som" por "Frei Gilson"
+                        termo = correcao 
                         tipo_final = "artista" # Se corrigiu pelo banco de artistas, é artista
                     else:
-                        # 3. Fallback: Confia na IA
+                        # 3. Fallback: Confia na IA mas mantém o termo original
+                        # Se não achou artista parecido (>85%), assume que é uma MÚSICA com esse nome
                         logger.info(f"🌐 Não encontrado no banco. Usando intuição da IA: {tipo_ia}")
                         tipo_final = tipo_ia
                 
@@ -105,6 +108,7 @@ class SpotifyBrain:
                 sugestao = self.toolkit.consultar_memoria_musical(termo)
                 logger.info(f"💡 Memória sugeriu: {sugestao}")
                 if "Encontrei" in sugestao:
+                    # Tenta extrair o nome da música da resposta da memória
                     musica_final = sugestao.split("'")[1] if "'" in sugestao else termo
                     return self.toolkit.tocar_musica(musica_final, tipo="musica")
                 else:

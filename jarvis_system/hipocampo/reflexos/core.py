@@ -1,5 +1,6 @@
 import logging
-from typing import Tuple
+import threading
+from typing import Tuple, Set, List, Pattern, Dict, Any
 
 from .storage import ReflexosStorage
 from .fuzzy_logic import aplicar_fuzzy
@@ -11,63 +12,113 @@ logger = logging.getLogger("HIPOCAMPO_REFLEXOS")
 class HipocampoReflexos:
     def __init__(self):
         self.storage = ReflexosStorage()
+        self._lock = threading.RLock()
         
-        # Estado em Memória
         self.phonetic_map = {}
-        self.ignored_phrases = []
-        self.regex_patterns = []
+        self.ignored_phrases: Set[str] = set()
+        self.regex_patterns = [] # [(Pattern, callback)]
         
         self.reload()
 
     def reload(self):
-        """Recarrega tudo do disco."""
-        self.phonetic_map = self.storage.carregar_manual()
-        self.ignored_phrases = self.storage.carregar_intuicao()
-        self.regex_patterns = compilar_padroes(self.phonetic_map)
-        logger.info(f"Reflexos Carregados: {len(self.phonetic_map)} regras manuais, {len(self.ignored_phrases)} bloqueios aprendidos.")
+        with self._lock:
+            try:
+                self.phonetic_map = self.storage.carregar_manual() or {}
+                raw_ignored = self.storage.carregar_intuicao() or []
+                self.ignored_phrases = set(f.strip().lower() for f in raw_ignored)
+                self.regex_patterns = compilar_padroes(self.phonetic_map)
+                logger.info(f"✅ Reflexos: {len(self.phonetic_map)} regras, {len(self.ignored_phrases)} bloqueios.")
+            except Exception as e:
+                logger.error(f"❌ Erro reload: {e}")
 
     def processar_reflexo(self, texto: str) -> Tuple[str, bool]:
+        """
+        Processa o texto aplicando correções e retorna (texto_limpo, deve_ignorar).
+        Retorna STRING simples para compatibilidade com sistemas legados.
+        """
         if not texto or not isinstance(texto, str): return "", True
         
-        texto_limpo = texto.strip().lower()
+        # Chama a análise completa e extrai apenas o texto final
+        analise = self.analisar_comando(texto)
+        return analise["texto"], analise.get("bloqueado", False)
 
-        # 1. BLOQUEIO (Subconsciente)
-        if texto_limpo in self.ignored_phrases:
-            logger.info(f"🚫 Bloqueado por Intuição: '{texto}'")
-            return texto, True
+    def analisar_comando(self, texto: str) -> Dict[str, Any]:
+        """
+        Nova API Rica: Retorna objeto de análise completo para o Orquestrador.
+        
+        Retorno:
+        {
+            "texto": str (Texto corrigido final),
+            "termo_detectado": str (Sugestão do DB, se houver),
+            "termo_original": str (O que foi ouvido),
+            "confianca": float,
+            "origem": str,
+            "bloqueado": bool
+        }
+        """
+        if not texto or not isinstance(texto, str): 
+            return {"texto": "", "confianca": 0, "bloqueado": True}
+        
+        original = texto
+        texto_limpo = texto.strip()
+        texto_lower = texto_limpo.lower()
 
-        # 2. HEURÍSTICA (Tamanho)
-        if len(texto_limpo) < 4 and "oi" not in texto_limpo:
-             return texto, True
+        with self._lock:
+            ignored = self.ignored_phrases
+            patterns = self.regex_patterns
+            pmap = self.phonetic_map
+
+        # 1. BLOQUEIO (Blacklist)
+        if any(ign in texto_lower for ign in ignored):
+            logger.info(f"🚫 Bloqueado: '{texto_limpo}'")
+            return {"texto": texto_limpo, "confianca": 1.0, "bloqueado": True}
+
+        if not texto_limpo: 
+            return {"texto": "", "confianca": 0, "bloqueado": True}
 
         # 3. CORREÇÃO
-        texto_processado = texto
-        original = texto
-        
+        # A. Fuzzy/Inteligência Musical (Retorna Dict)
         try:
-            # Regex (Exata)
-            for pattern, correction in self.regex_patterns:
-                texto_processado = pattern.sub(correction, texto_processado)
+            # aplicar_fuzzy agora retorna um dicionário rico
+            resultado_fuzzy = aplicar_fuzzy(texto_limpo, pmap)
+            texto_processado = resultado_fuzzy["texto"]
             
-            # Fuzzy (Aproximada)
-            texto_processado = aplicar_fuzzy(texto_processado, self.phonetic_map)
+            # B. Regex/Manual (Aplica sobre o resultado do fuzzy se necessário)
+            # Geralmente o fuzzy já aplica o manual, mas o regex pega padrões complexos
+            for pattern, callback in patterns:
+                texto_processado = pattern.sub(callback, texto_processado)
 
+            # Log de alteração
             if original != texto_processado:
-                logger.info(f"⚡ Reflexo: '{original}' -> '{texto_processado}'")
-                
-        except Exception as e:
-            logger.error(f"Erro processamento: {e}")
-            return original, False
+                logger.info(f"⚡ Reflexo Final: '{original}' -> '{texto_processado}'")
+            
+            # Atualiza o texto final no objeto de resultado e retorna
+            resultado_fuzzy["texto"] = texto_processado
+            resultado_fuzzy["bloqueado"] = False
+            return resultado_fuzzy
 
-        return texto_processado, False
+        except Exception as e:
+            logger.error(f"⚠️ Erro reflexos: {e}")
+            # Fallback seguro
+            return {
+                "texto": original, 
+                "confianca": 0.0, 
+                "origem": "erro", 
+                "bloqueado": False
+            }
 
     def corrigir_texto(self, texto: str) -> str:
         t, _ = self.processar_reflexo(texto)
         return t
 
     def adicionar_correcao(self, errado: str, correto: str) -> bool:
-        self.phonetic_map[errado.lower()] = correto
-        if self.storage.salvar_manual(self.phonetic_map):
-            self.reload()
-            return True
+        if not errado or not correto: return False
+        with self._lock:
+            self.phonetic_map[errado.lower()] = correto
+            if self.storage.salvar_manual(self.phonetic_map):
+                self.reload()
+                return True
         return False
+
+# Singleton Global para uso em outros módulos
+reflexos = HipocampoReflexos()

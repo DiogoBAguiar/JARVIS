@@ -83,6 +83,20 @@ class WindowManager:
             except: pass
         return None
 
+    def minimizar(self):
+        """
+        Minimiza a janela para forçar refresh gráfico.
+        Útil quando a interface do Spotify trava ou elementos não são renderizados.
+        """
+        hwnd = self.obter_hwnd()
+        if hwnd:
+            try:
+                win32gui.ShowWindow(hwnd, 6) # SW_MINIMIZE = 6
+                logger.info("📉 Janela minimizada (Refresh UI).")
+                time.sleep(0.5)
+            except Exception as e:
+                logger.error(f"Erro ao minimizar: {e}")
+
     def focar(self, hwnd=None):
         """Traz a janela para frente com força bruta se necessário."""
         if not hwnd:
@@ -105,4 +119,5 @@ class WindowManager:
                     # Último recurso: Alt+Tab "cego" (não recomendado, mas funciona)
                     pass
             
-            time.sleep(0.2) # Tempo para a animação do Windows
+            # Aumentado para 0.5s para garantir que o Spotify renderize os botões após restaurar
+            time.sleep(0.5)
