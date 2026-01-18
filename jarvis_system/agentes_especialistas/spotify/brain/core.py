@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re  # <--- IMPORTANTE: Adicionado para o Regex da Via Rápida
 from typing import Optional
 
 try:
@@ -59,6 +60,15 @@ class SpotifyBrain:
 
     def processar(self, comando: str) -> str:
         if not comando: return ""
+        
+        # --- NOVO: CAMADA ZERO (VIA RÁPIDA - LOCAL FIRST) ---
+        # Tenta resolver sem LLM se for um comando simples de "Tocar X"
+        acao_rapida = self._tentar_resolucao_local(comando)
+        if acao_rapida:
+            logger.info(f"⚡ Via Rápida acionada: Pulando LLM.")
+            return acao_rapida
+
+        # --- CAMADA 1: LLM (FALLBACK) ---
         if not self.agent: return self.limbic.reagir_instintivamente(comando)
 
         try:
@@ -131,3 +141,32 @@ class SpotifyBrain:
         except Exception as e:
             logger.error(f"🔥 Erro no Router: {e}")
             return self.limbic.reagir_instintivamente(comando)
+
+    def _tentar_resolucao_local(self, comando: str) -> Optional[str]:
+        """
+        Tenta extrair o termo via Regex e buscar no DB Local.
+        Se encontrar com alta certeza, retorna a ação imediatamente.
+        """
+        cmd = comando.lower().strip()
+        
+        # 1. Extração Simples (Heurística)
+        # Regex captura o que vem depois de tocar/ouvir/som de
+        padrao = r"(tocar|ouvir|som de|bota|reproduzir)\s+(.+)"
+        match = re.search(padrao, cmd)
+        
+        if match:
+            termo_bruto = match.group(2).strip()
+            
+            # 2. Verifica no Toolkit se é um Artista Conhecido (Speech Config / DB)
+            # Isso acessa sua lista local blindada (speech_config.json)
+            if self.toolkit.verificar_se_artista(termo_bruto):
+                logger.info(f"📚 [Via Rápida] '{termo_bruto}' encontrado no cache de artistas.")
+                return self.toolkit.tocar_musica(termo_bruto, tipo="artista")
+            
+            # 3. Tenta Correção Fonética Local (Ex: "Matue" -> "Matuê")
+            correcao = self.toolkit.sugerir_correcao(termo_bruto)
+            if correcao:
+                logger.info(f"✨ [Via Rápida] Correção fonética aplicada: '{termo_bruto}' -> '{correcao}'")
+                return self.toolkit.tocar_musica(correcao, tipo="artista")
+
+        return None

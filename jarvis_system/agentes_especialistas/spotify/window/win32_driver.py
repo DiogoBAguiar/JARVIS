@@ -1,5 +1,6 @@
 import time
 import logging
+import pyautogui # <--- ADICIONADO: Necessário para o truque de foco
 
 logger = logging.getLogger("WINDOW_DRIVER")
 
@@ -63,25 +64,37 @@ class Win32WindowDriver:
             return None
 
     def force_focus(self, hwnd):
-        """Traz a janela para frente e restaura se estiver minimizada."""
-        if not WINDOWS_AVAILABLE or not hwnd: return
+        """
+        Traz a janela para frente com VALIDAÇÃO REAL (Determinística).
+        """
+        if not WINDOWS_AVAILABLE or not hwnd: return False
 
         try:
             # 1. Se estiver minimizada (Iconic), restaura
             if win32gui.IsIconic(hwnd):
                 win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
             
-            # 2. Traz para o front (SetForegroundWindow pode ser chato no Windows 10/11)
-            # Às vezes requer um 'truque' de enviar um comando dummy antes, mas vamos manter simples.
+            # 2. Tenta focar (Tentativa Padrão)
             try:
                 win32gui.SetForegroundWindow(hwnd)
             except Exception:
-                # O Windows às vezes bloqueia isso se o script não tiver foco.
-                # Não é crítico se falhar, o clique fantasma (input/background) ainda funciona.
-                pass
+                # 3. Fallback: Truque do Alt para Windows 10/11 teimosos
+                try:
+                    pyautogui.press('alt')
+                    win32gui.SetForegroundWindow(hwnd)
+                except: pass
                 
-            time.sleep(0.5) # Tempo para a animação da janela
-            return True
+            # 4. LOOP DE GARANTIA (Determinístico)
+            # Verifica se o foco realmente mudou antes de retornar
+            for _ in range(20): # Tenta por até 2 segundos
+                if win32gui.GetForegroundWindow() == hwnd:
+                    time.sleep(0.05) # Buffer para renderização
+                    return True
+                time.sleep(0.1)
+
+            logger.warning(f"Timeout: Não foi possível focar a janela HWND {hwnd}")
+            return False
+
         except Exception as e:
             logger.error(f"Erro ao focar janela {hwnd}: {e}")
             return False

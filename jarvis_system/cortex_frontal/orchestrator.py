@@ -30,16 +30,49 @@ ATTENTION_WINDOW = 40.0
 class Orchestrator:
     def __init__(self):
         self.log = JarvisLogger("CORTEX_FRONTAL")
-        self._ultima_ativacao = 0.0
+        
+        # Inicia com a atenção ligada para aceitar comandos imediatos no boot/teste
+        self._ultima_ativacao = time.time()
         self.contexto_pendente: Optional[dict] = None  
         
+        # Inscreve para ouvir o evento de fala (Do Microfone)
         bus.inscrever(Eventos.FALA_RECONHECIDA, self.processar_input)
-        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v3.1 - Fix Crash + Prioridade Música).")
+        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v3.3 - Bugfix Eventos).")
 
     def start(self): pass
     def stop(self): pass
 
+    # --- NOVO MÉTODO (API GATEWAY) ---
+    def processar(self, texto: str) -> str:
+        """
+        Método síncrono para API/Testes. 
+        Simula o fluxo completo e retorna a resposta em texto.
+        """
+        if not texto: return ""
+        
+        # Mock do evento para reutilizar a lógica
+        evento_mock = Evento(Eventos.FALA_RECONHECIDA, {"texto": texto})
+        
+        # Capturamos a resposta que seria enviada para o BUS
+        resposta_final = []
+        
+        # Função temporária para interceptar a fala
+        def interceptar_fala(evento):
+            # --- CORREÇÃO AQUI: evento.nome em vez de evento.tipo ---
+            if evento.nome == Eventos.FALAR:
+                resposta_final.append(evento.dados["texto"])
+
+        # Inscreve o interceptador
+        bus.inscrever(Eventos.FALAR, interceptar_fala)
+        
+        # Roda o processamento
+        self.processar_input(evento_mock)
+        
+        # Retorna a última fala ou vazio
+        return " | ".join(resposta_final) if resposta_final else "Sem resposta vocal."
+
     def processar_input(self, evento: Evento):
+        """Pipeline Principal acionado por Eventos (Assíncrono)."""
         try:
             texto_bruto = evento.dados.get("texto", "")
             if not texto_bruto: return
@@ -114,7 +147,6 @@ class Orchestrator:
             if match:
                 erro, correcao = match.group(1).strip(), match.group(2).strip()
                 if reflexos:
-                    # FIX: Nome do método corrigido de 'aprender' para 'adicionar_correcao'
                     sucesso = reflexos.adicionar_correcao(erro, correcao)
                     msg = f"Entendido. '{erro}' agora é '{correcao}'." if sucesso else "Erro ao gravar reflexo."
                     self._falar(msg)
@@ -144,7 +176,6 @@ class Orchestrator:
             self._falar(f"Entendido. Abrindo {dados['alvo_real']} e aprendendo.")
             if launcher: launcher.abrir_por_caminho(app_info.get('caminho'))
             if reflexos:
-                # FIX: Nome do método corrigido
                 reflexos.adicionar_correcao(dados['termo_original'].split()[0], dados['alvo_real'].lower())
         self.contexto_pendente = None
         self._ultima_ativacao = time.time()
@@ -169,9 +200,7 @@ class Orchestrator:
             self.log.warning("Launcher está None. Verifique imports.")
 
         if registry:
-            # --- 1. PRIORIDADE MÁXIMA PARA MÚSICA (CORREÇÃO DE ROTEAMENTO) ---
-            # Verifica se é música ANTES de perguntar ao registro geral.
-            # Isso impede que o agente 'media' capture o comando 'tocar'.
+            # --- 1. PRIORIDADE MÁXIMA PARA MÚSICA ---
             verbos_musica = ["tocar ", "toca ", "ouvir ", "bota ", "põe ", "toka ", "escute ", "reproduzir "]
             
             if any(texto.startswith(p) for p in verbos_musica):
@@ -200,7 +229,6 @@ class Orchestrator:
                 return True
 
             # --- 2. Verifica Agente Nominal (Genérico) ---
-            # Só executa isso se NÃO for um comando explícito de música detectado acima
             nome_agente = registry.identificar_agente(texto)
             if nome_agente:
                 self.log.info(f"🕵️ Agente acionado: {nome_agente}")

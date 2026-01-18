@@ -10,8 +10,8 @@ logger = logging.getLogger("SPOTIFY_WINDOW")
 
 class WindowManager:
     """
-    Gerenciador de Janelas V2 (Blindado).
-    Identifica o Spotify pelo executável 'spotify.exe', ignorando o título da janela.
+    Gerenciador de Janelas V2.5 (Determinístico).
+    Garante que a janela está focada verificando o estado real do SO.
     """
     
     def __init__(self):
@@ -98,26 +98,43 @@ class WindowManager:
                 logger.error(f"Erro ao minimizar: {e}")
 
     def focar(self, hwnd=None):
-        """Traz a janela para frente com força bruta se necessário."""
+        """
+        Traz a janela para frente com VALIDAÇÃO REAL.
+        Não retorna até ter certeza que o foco mudou (ou dar timeout).
+        """
         if not hwnd:
             hwnd = self.obter_hwnd()
         
-        if hwnd:
+        if not hwnd: return False
+
+        try:
+            # 1. Se estiver minimizada, restaura
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, 9) # SW_RESTORE
+            
+            # 2. Tenta focar (Primeira Tentativa)
             try:
-                # Se estiver minimizada, restaura
-                if win32gui.IsIconic(hwnd):
-                    win32gui.ShowWindow(hwnd, 9) # SW_RESTORE
-                
-                # Tenta focar via Win32
                 win32gui.SetForegroundWindow(hwnd)
             except Exception:
-                # Se o Windows bloquear o foco (comum), usa o truque do Alt
+                # Truque do Alt para "roubar" foco no Windows 10/11 se estiver bloqueado
                 try:
-                    pyautogui.press('alt') # Solta a tecla 'preso'
+                    pyautogui.press('alt') 
                     win32gui.SetForegroundWindow(hwnd)
-                except:
-                    # Último recurso: Alt+Tab "cego" (não recomendado, mas funciona)
-                    pass
+                except: pass
             
-            # Aumentado para 0.5s para garantir que o Spotify renderize os botões após restaurar
-            time.sleep(0.5)
+            # 3. LOOP DE GARANTIA (Determinístico)
+            # Espera até 2 segundos para o Windows processar a troca de contexto
+            for _ in range(20):
+                current_focus = win32gui.GetForegroundWindow()
+                if current_focus == hwnd:
+                    # Pequeno buffer para o render (GPU) alcançar a lógica (CPU)
+                    time.sleep(0.1) 
+                    return True
+                time.sleep(0.1)
+            
+            logger.warning("⚠️ Timeout: Windows não entregou o foco para o Spotify.")
+            return False
+
+        except Exception as e:
+            logger.error(f"Erro ao focar: {e}")
+            return False
