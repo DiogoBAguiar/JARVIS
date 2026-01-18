@@ -1,7 +1,7 @@
 import os
 import time
 import datetime
-import re  # <--- IMPORTANTE: Adicionado para Regex
+import re
 from typing import Optional
 from groq import Groq
 import ollama
@@ -43,36 +43,34 @@ class HybridBrain:
         hora_str = now.strftime("%H:%M")
         
         return (
-            f"Você é J.A.R.V.I.S. Data: {data_str}, Hora: {hora_str}.\n\n"
-            "### SEUS AGENTES (TOOLS):\n"
-            "1. [spotify]: EXCLUSIVO para 'Tocar [Nome]', 'Ouvir [Nome]', Bandas, Músicas.\n"
-            "2. [media]: EXCLUSIVO para comandos 'secos': 'Pausar', 'Aumentar', 'Mudo', 'Próxima'.\n"
-            "3. [clima]: Previsão do tempo.\n"
-            "4. [sistema]: Abrir apps, desligar PC.\n\n"
-            "### PROTOCOLO DE DECISÃO:\n"
-            "- Se a frase tem 'Tocar' + [Qualquer Coisa] -> USE: spotify\n"
-            "- Se a frase é só 'Tocar' ou 'Play' -> USE: media\n"
-            "- Se mencionou artista (Coldplay, Matuê, etc) -> USE: spotify\n\n"
-            "Responda APENAS com o nome do agente ou a resposta curta."
+            f"Você é J.A.R.V.I.S., uma IA avançada de automação e companhia. Data: {data_str}, Hora: {hora_str}.\n\n"
+            "### DIRETRIZES MESTRAS:\n"
+            "1. **AUTOMACAO**: Se o usuário pedir música, abrir apps ou controle de PC, retorne APENAS um JSON.\n"
+            "   - Música: `{\"ferramenta\": \"spotify\", \"comando\": \"...\"}`\n"
+            "   - App: `{\"ferramenta\": \"sistema\", \"comando\": \"abrir ...\"}`\n\n"
+            "2. **MEMÓRIA**: Se o usuário disser 'Aprenda que...', retorne JSON: `{\"ferramenta\": \"memoria_gravar\", \"dado\": \"...\"}`\n"
+            "3. **CHAT**: Se for pergunta geral ('Quem é você?', 'Piada', 'Sentido da vida'), RESPONDA COMO CHATBOT.\n"
+            "   - Seja espirituoso, breve e útil. Personalidade: Jarvis do Homem de Ferro.\n\n"
+            "### REGRAS ESPECÍFICAS:\n"
+            "- Se o usuário falar apenas 'status', assuma que é um check de sistema.\n"
+            "- Não invente nomes de ferramentas (ex: sistema_ping não existe).\n"
+            "- Para perguntas sobre o usuário ('Quem sou eu?'), use o contexto fornecido."
         )
 
     def _verificar_intencao_forcada(self, texto: str) -> Optional[str]:
         """
         Heurística: Intercepta comandos óbvios antes de gastar IA.
-        Isso PROÍBE o erro de 'tocar coldplay' ir para media.
+        Isso ajuda a garantir que 'tocar coldplay' vá para o Spotify.
         """
         t = texto.lower().strip()
         
         # Lista de verbos musicais que exigem busca
         verbos_busca = ["tocar", "ouvir", "bota", "reproduzir", "som de", "escutar"]
         
-        # Verifica se começa com um verbo e tem conteúdo depois (ex: "tocar coldplay")
         for verbo in verbos_busca:
-            # Regex: Procura "verbo" seguido de qualquer texto (len > 2)
             if re.search(rf"\b{verbo}\s+.{{2,}}", t):
-                log.info(f"🛡️ Interceptação Lógica: '{texto}' contém intenção musical clara.")
-                # Retorna um prompt forçado para a IA completar a ação corretamente
-                return f"Comando de música detectado: '{texto}'. Ação: spotify"
+                # Se detectado, forçamos o LLM a seguir este caminho
+                return f"Comando de música detectado: '{texto}'. Ação esperada: spotify"
 
         return None
 
@@ -82,8 +80,7 @@ class HybridBrain:
         # 1. Recuperação de Contexto (RAG)
         contexto_rag = self._recuperar_memoria(texto_usuario)
         
-        # 2. PROIBIÇÃO DE ERRO (NOVO)
-        # Se a lógica detectar música, nós injetamos uma instrução irrecusável no prompt
+        # 2. Reforço Heurístico
         dica_intencao = self._verificar_intencao_forcada(texto_usuario)
         
         # 3. Montagem do Prompt
@@ -113,28 +110,46 @@ class HybridBrain:
         return resposta
 
     def ensinar(self, fato: str):
+        """Método direto para gravar memória sem passar pelo 'pensar'"""
         if not memoria: return "Erro: Memória off."
-        try: return memoria.memorizar(fato)
-        except Exception: return "Falha memória."
+        
+        try:
+            # Tenta encontrar o método correto dinamicamente
+            if hasattr(memoria, "adicionar_memoria"):
+                memoria.adicionar_memoria(fato)
+            elif hasattr(memoria, "memorizar"):
+                memoria.memorizar(fato)
+            elif hasattr(memoria, "gravar"):
+                memoria.gravar(fato)
+            else:
+                # Fallback genérico se o nome do método não for óbvio
+                log.error(f"Interface de memória incompatível. Métodos disponíveis: {dir(memoria)}")
+                return "Erro técnico na memória."
+                
+            return "Memória gravada com sucesso."
+            
+        except Exception as e:
+            log.error(f"Erro ao gravar memória: {e}")
+            return "Falha ao acessar banco de memória."
 
     # --- AUXILIARES ---
 
     def _recuperar_memoria(self, query: str) -> str:
         if not memoria: return ""
         try:
+            # Tenta buscar contexto relevante no ChromaDB
             dados = memoria.relembrar(query)
             if dados: return dados
         except: pass
         return ""
 
     def _montar_prompt_usuario(self, query: str, context: str, dica: str = None) -> str:
-        # Se tivermos uma dica forçada (heurística), ela vai no topo
         reforco = ""
         if dica:
             reforco = f"INSTRUÇÃO DO SISTEMA: {dica}. OBEDEÇA A ESTA CLASSIFICAÇÃO.\n"
 
         base = f"USUÁRIO: {query}"
-        ctx = f"MEMÓRIA:\n{context}\n" if context else ""
+        ctx = f"MEMÓRIA/CONTEXTO:\n{context}\n" if context else ""
         
         return f"{reforco}{ctx}---\n{base}"
 
@@ -146,8 +161,9 @@ class HybridBrain:
                 {"role": "system", "content": self._dynamic_system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.0, # Temperatura ZERO para máxima precisão lógica
-            max_tokens=256,
+            # Temperature ajustada: 0.3 permite criatividade no chat mas mantém rigor nos comandos
+            temperature=0.3, 
+            max_tokens=300,
             timeout=6.0
         )
         return chat.choices[0].message.content
@@ -159,7 +175,7 @@ class HybridBrain:
                 {"role": "system", "content": self._dynamic_system_prompt},
                 {"role": "user", "content": prompt}
             ],
-            options={"temperature": 0.0, "num_predict": 128}
+            options={"temperature": 0.3, "num_predict": 128}
         )
         return response['message']['content']
 

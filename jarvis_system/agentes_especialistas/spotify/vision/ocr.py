@@ -1,6 +1,6 @@
 import logging
 import pyautogui
-import gc # Garbage Collector para limpeza de RAM
+import gc
 from .dependencies import cv2, easyocr, np, DEPENDENCIES_OK
 
 logger = logging.getLogger("VISION_OCR")
@@ -8,72 +8,65 @@ logger = logging.getLogger("VISION_OCR")
 class OCRProcessor:
     """
     Responsável pelo processamento de imagem e extração de texto.
-    Versão Otimizada: Suporta 'Fast Mode' e Descarregamento de Memória.
+    Versão V4 (Speed-Focused): Otimizada para leitura rápida de UI.
     """
+    
+    _shared_reader = None
 
     def __init__(self):
-        self.reader = None
+        pass
 
     def carregar_modelo(self):
-        """Lazy loading do modelo EasyOCR (pesado)."""
         if not DEPENDENCIES_OK: return False
         
-        if not self.reader:
-            logger.info("👁️ [OCR] Carregando modelo EasyOCR na memória (Isso gasta RAM)...")
+        if OCRProcessor._shared_reader is None:
+            logger.info("👁️ [OCR] Carregando modelo EasyOCR na memória...")
             try:
-                # gpu=False garante compatibilidade, mude para True se tiver CUDA configurado
-                self.reader = easyocr.Reader(['pt', 'en'], gpu=False, verbose=False)
+                # Se tiver GPU NVIDIA, mude gpu=False para True
+                OCRProcessor._shared_reader = easyocr.Reader(['pt', 'en'], gpu=False, verbose=False)
                 logger.info("✅ Motor OCR pronto.")
             except Exception as e:
                 logger.error(f"❌ Falha ao carregar EasyOCR: {e}")
-                self.reader = None
                 return False
         return True
 
     def liberar_memoria(self):
-        """
-        NOVO: Descarrega o modelo para liberar ~500MB de RAM quando ocioso.
-        """
-        if self.reader:
-            logger.info("🧹 Liberando memória do OCR (Garbage Collection)...")
-            del self.reader
-            self.reader = None
-            gc.collect() # Força limpeza imediata do Python
+        if OCRProcessor._shared_reader:
+            logger.info("🧹 Liberando memória do OCR...")
+            del OCRProcessor._shared_reader
+            OCRProcessor._shared_reader = None
+            gc.collect()
 
     def _processar_imagem(self, imagem_np, fast_mode=False):
         """
-        Pipeline: Grayscale -> (Opcional) Upscale -> Binarização Adaptativa.
-        
-        Args:
-            fast_mode (bool): Se True, pula o upscale. Mais rápido, mas menos preciso para fontes miúdas.
+        Tratamento de imagem focado em performance.
         """
         if not DEPENDENCIES_OK or cv2 is None: return None, 100
 
         try:
-            # 1. Escala de Cinza
+            # 1. Conversão para Grayscale (Obrigatório)
             gray = cv2.cvtColor(imagem_np, cv2.COLOR_RGB2GRAY)
             
-            scale_percent = 100 # Padrão (Sem zoom)
+            # Se for modo rápido (ex: ler menus simples), retorna raw
+            if fast_mode:
+                return gray, 100
 
-            # 2. Upscaling (Só faz se NÃO for modo rápido)
-            # Otimização: Evita redimensionar se o texto já for grande ou performance for crítica
-            if not fast_mode:
-                scale_percent = 150
-                width = int(gray.shape[1] * scale_percent / 100)
-                height = int(gray.shape[0] * scale_percent / 100)
-                dim = (width, height)
-                
-                processed = cv2.resize(gray, dim, interpolation=cv2.INTER_LINEAR)
-            else:
-                processed = gray
-
-            # 3. Binarização (Preto e Branco Inteligente)
-            binary = cv2.adaptiveThreshold(
-                processed, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                cv2.THRESH_BINARY, 11, 2
-            )
+            # 2. Pipeline de Precisão (Apenas para Artistas/Capas difíceis)
+            # Upscale Linear 1.5x é o sweet spot entre velocidade e leitura
+            scale_percent = 150
+            width = int(gray.shape[1] * scale_percent / 100)
+            height = int(gray.shape[0] * scale_percent / 100)
+            dim = (width, height)
             
-            return binary, scale_percent
+            # INTER_LINEAR é muito mais rápido que CUBIC e suficiente para 90% dos casos
+            processed = cv2.resize(gray, dim, interpolation=cv2.INTER_LINEAR)
+
+            # 3. CLAHE (Vital para texto branco em fundo claro/colorido)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(processed)
+
+            return enhanced, scale_percent
+
         except Exception as e:
             logger.error(f"Erro processando imagem: {e}")
             return None, 100
@@ -81,7 +74,6 @@ class OCRProcessor:
     def ler_tela(self, region=None, fast_mode=False):
         """
         Tira print e retorna lista de (bbox, texto, confiança).
-        Agora suporta o parâmetro 'fast_mode' para leituras rápidas.
         """
         if not self.carregar_modelo(): return []
 
@@ -89,28 +81,32 @@ class OCRProcessor:
             # Validação da região
             if region and any(x < 0 for x in region): region = None
 
-            # 1. Captura
+            # 1. Captura (Gargalo de I/O)
             screenshot = pyautogui.screenshot(region=region)
             imagem_np = np.array(screenshot)
 
-            # 2. Tratamento (Com ou sem upscale)
+            # 2. Tratamento (Gargalo de CPU)
             imagem_proc, scale = self._processar_imagem(imagem_np, fast_mode=fast_mode)
             if imagem_proc is None: return []
 
-            # 3. Leitura
-            resultados_raw = self.reader.readtext(imagem_proc, detail=1)
+            # 3. Leitura (Gargalo de IA)
+            # paragraph=False é mais rápido para listas
+            resultados_raw = OCRProcessor._shared_reader.readtext(
+                imagem_proc, 
+                detail=1,
+                paragraph=False 
+            )
 
-            # 4. Normalização (Desfaz o zoom do processamento para retornar coords reais)
+            # 4. Normalização
             resultados_ajustados = []
             fator = 100 / scale
             ox, oy = (region[0], region[1]) if region else (0, 0)
 
             for (bbox, texto, conf) in resultados_raw:
-                if conf < 0.4: continue # Filtro de confiança
+                if conf < 0.35: continue 
 
                 (tl, tr, br, bl) = bbox
                 
-                # Ajusta coordenadas locais da imagem redimensionada para globais da tela
                 def adj(p): return [int(p[0] * fator) + ox, int(p[1] * fator) + oy]
                 
                 new_bbox = (adj(tl), adj(tr), adj(br), adj(bl))

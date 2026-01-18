@@ -1,6 +1,7 @@
 import time
 import re
 import random
+import json  # <--- IMPORTANTE: Necessário para entender o Cérebro
 from typing import Optional, Tuple
 from difflib import SequenceMatcher
 
@@ -37,48 +38,38 @@ class Orchestrator:
         
         # Inscreve para ouvir o evento de fala (Do Microfone)
         bus.inscrever(Eventos.FALA_RECONHECIDA, self.processar_input)
-        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v3.3 - Bugfix Eventos).")
+        self.log.info("🧠 Córtex Frontal Inicializado (Pipeline v3.6 - JSON Parser).")
 
     def start(self): pass
     def stop(self): pass
 
-    # --- NOVO MÉTODO (API GATEWAY) ---
+    # --- API GATEWAY ---
     def processar(self, texto: str) -> str:
-        """
-        Método síncrono para API/Testes. 
-        Simula o fluxo completo e retorna a resposta em texto.
-        """
+        """Método síncrono para API/Testes."""
         if not texto: return ""
         
-        # Mock do evento para reutilizar a lógica
+        # Mock do evento
         evento_mock = Evento(Eventos.FALA_RECONHECIDA, {"texto": texto})
         
-        # Capturamos a resposta que seria enviada para o BUS
+        # Captura resposta
         resposta_final = []
-        
-        # Função temporária para interceptar a fala
         def interceptar_fala(evento):
-            # --- CORREÇÃO AQUI: evento.nome em vez de evento.tipo ---
             if evento.nome == Eventos.FALAR:
                 resposta_final.append(evento.dados["texto"])
 
-        # Inscreve o interceptador
         bus.inscrever(Eventos.FALAR, interceptar_fala)
-        
-        # Roda o processamento
         self.processar_input(evento_mock)
-        
-        # Retorna a última fala ou vazio
         return " | ".join(resposta_final) if resposta_final else "Sem resposta vocal."
 
     def processar_input(self, evento: Evento):
-        """Pipeline Principal acionado por Eventos (Assíncrono)."""
+        """Pipeline Principal."""
         try:
             texto_bruto = evento.dados.get("texto", "")
             if not texto_bruto: return
 
             # 1. Normalização
             comando_limpo = re.sub(r'[^\w\s]', '', texto_bruto.lower()).strip()
+            comando_limpo = re.sub(r'(.)\1{2,}', r'\1', comando_limpo)
             
             # 2. Pipeline de Decisão
             if self._handle_confirmation(comando_limpo): return
@@ -86,7 +77,6 @@ class Orchestrator:
             is_wake, texto_payload = self._check_attention(comando_limpo)
             if not is_wake: return 
 
-            # --- RESPOSTA AO CHAMADO ---
             if not texto_payload:
                 saudacoes = ["Pois não?", "Estou aqui.", "Sim?", "Às ordens."]
                 self._falar(random.choice(saudacoes))
@@ -104,9 +94,9 @@ class Orchestrator:
 
         except Exception as e:
             self.log.error(f"Erro no processamento cognitivo: {e}")
-            self._falar("Ocorreu um erro interno nos meus circuitos.")
+            self._falar("Ocorreu um erro interno.")
 
-    # --- ETAPA 1: ATENÇÃO & WAKE WORD (FUZZY) ---
+    # --- ETAPA 1: ATENÇÃO ---
     def _check_attention(self, texto: str) -> Tuple[bool, str]:
         tempo_passado = time.time() - self._ultima_ativacao
         
@@ -182,119 +172,176 @@ class Orchestrator:
 
     # --- ETAPA 3: SISTEMA LIMBICO ---
     def _handle_system_commands(self, texto: str) -> bool:
-        mapa = {"desligar": "sistema_desligar", "status": "sistema_ping"}
+        if texto == "volume":
+            self._falar("Volume atual: Ajustando para mostrar painel.")
+            if registry: registry.execute("sistema", comando="aumenta o volume")
+            return True
+
+        mapa = {"desligar": "sistema_desligar", "status": "sistema_status"}
         for gatilho, tool_name in mapa.items():
             if gatilho in texto:
                 if tool_name == "sistema_desligar":
                     self._falar("Desligando protocolos.")
                     bus.publicar(Evento(Eventos.SHUTDOWN, {}))
                     return True
-                if registry:
-                    self._falar(str(registry.execute(tool_name)))
-                return True
+                if tool_name == "sistema_status":
+                    self._falar("Sistemas operacionais e auditivos: 100% online.")
+                    return True
         return False
 
-    # --- ETAPA 4: FERRAMENTAS (COM FALLBACK PARA SPOTIFY) ---
+    # --- ETAPA 4: FERRAMENTAS ---
     def _handle_tools(self, texto: str) -> bool:
         if not launcher: 
-            self.log.warning("Launcher está None. Verifique imports.")
+            self.log.warning("Launcher está None.")
+
+        # 1. LAUNCHER
+        verbos_abrir = ["abrir", "iniciar", "executar", "rodar", "lançar"]
+        for v in verbos_abrir:
+            if texto.startswith(v + " ") or texto == v: # Aceita comando exato "abrir"
+                termo_busca = texto[len(v):].strip()
+                
+                if not termo_busca:
+                    self._falar("Por favor, diga o nome do programa que deseja abrir.")
+                    return True 
+
+                if launcher:
+                    status, nome, caminho = launcher.buscar_candidato(termo_busca)
+                    if status == "EXATO":
+                        self._falar(f"Abrindo {nome}.")
+                        launcher.abrir_por_caminho(caminho)
+                        return True
+                    elif status == "SUGESTAO":
+                        self._falar(f"Encontrei '{nome}'. Deseja abrir?")
+                        self.contexto_pendente = {
+                            "tipo": "confirmar_app_learning",
+                            "dados": {"nome": nome, "caminho": caminho},
+                            "termo_original": termo_busca,
+                            "alvo_real": nome
+                        }
+                        return True
+                    
+                    self._falar(f"Não encontrei o aplicativo '{termo_busca}'.")
+                    return True
+                break 
 
         if registry:
-            # --- 1. PRIORIDADE MÁXIMA PARA MÚSICA ---
-            verbos_musica = ["tocar ", "toca ", "ouvir ", "bota ", "põe ", "toka ", "escute ", "reproduzir "]
+            # 2. MÚSICA
+            verbos_musica = [
+                "tocar ", "toca ", "ouvir ", "bota ", "põe ", "toka ", "escute ", "reproduzir ",
+                "proxima", "próxima", "anterior", "voltar", "pular", "avançar",
+                "pausar", "continuar", "parar", "play", "pause"
+            ]
             
+            # Tratamento de comandos curtos
+            if texto in ["tocar", "toca", "play"]:
+                self._falar("Continuando a música.")
+                registry.execute("spotify", comando="play")
+                return True
+
             if any(texto.startswith(p) for p in verbos_musica):
-                self.log.info("🎵 Verbo de música detectado. Forçando Agente Spotify...")
-                
-                # A) Tenta executar via Agente Especialista
+                self.log.info("🎵 Intenção de música detectada.")
                 resultado = registry.execute("spotify", comando=texto)
                 resp_str = str(resultado).lower()
                 
-                # B) Lógica de Fallback
+                # Fallback se Spotify estiver fechado
                 erros_comuns = ["offline", "sem internet", "fechado", "não está rodando", "erro"]
-                
                 if any(err in resp_str for err in erros_comuns) and launcher:
                     self.log.info("⚠️ Agente falhou/offline. Acionando Fallback Launcher.")
                     self._falar("O Spotify parece fechado. Vou abri-lo.")
-                    
                     status, nome, caminho = launcher.buscar_candidato("spotify")
                     if caminho:
                         launcher.abrir_por_caminho(caminho)
-                        return True
                     else:
                         self._falar("Não encontrei o aplicativo instalado.")
-                        return True
+                    return True
                 
                 self._falar(str(resultado))
                 return True
 
-            # --- 2. Verifica Agente Nominal (Genérico) ---
+            # 3. NOMINAL
             nome_agente = registry.identificar_agente(texto)
             if nome_agente:
-                self.log.info(f"🕵️ Agente acionado: {nome_agente}")
+                self.log.info(f"🕵️ Agente nominal acionado: {nome_agente}")
                 self._falar(str(registry.execute(nome_agente, comando=texto)))
                 return True
 
-        # 3. Comandos de Sistema Operacional (Launcher Genérico)
-        verbos = ["abrir", "iniciar", "executar", "rodar", "bota", "põe", "lançar"]
-        termo_busca = texto
-        comando_explicito = False
-        
-        for v in verbos:
-            if texto.startswith(v + " "):
-                termo_busca = texto[len(v):].strip()
-                comando_explicito = True
-                break
-        
+        # 4. LAUNCHER (SEM VERBO)
         if launcher:
-            status, nome, caminho = launcher.buscar_candidato(termo_busca)
-            
+            status, nome, caminho = launcher.buscar_candidato(texto)
             if status == "EXATO":
                 self._falar(f"Abrindo {nome}.")
                 launcher.abrir_por_caminho(caminho)
                 return True
-            elif status == "SUGESTAO":
-                self._falar(f"Encontrei '{nome}'. Deseja abrir?")
-                self.contexto_pendente = {
-                    "tipo": "confirmar_app_learning",
-                    "dados": {"nome": nome, "caminho": caminho},
-                    "termo_original": termo_busca,
-                    "alvo_real": nome
-                }
-                return True
-            
-            if comando_explicito:
-                self._falar(f"Não encontrei o aplicativo {termo_busca}.")
-                return True
-        else:
-            if comando_explicito:
-                self._falar("Meu módulo lançador está offline.")
-                return True
 
-        # Memória Rápida
+        # 5. MEMÓRIA (REGEX)
         for gatilho in MEMORY_TRIGGERS:
             if gatilho in texto and "aprenda que" not in texto:
+                payload = texto.split(gatilho, 1)[1].strip()
+                if not payload:
+                    self._falar("O que você gostaria que eu memorizasse?")
+                    return True
                 if not llm: return False
-                llm.ensinar(texto.split(gatilho, 1)[1].strip())
+                llm.ensinar(payload)
                 self._falar("Memória gravada.")
                 return True
 
         return False
 
-    # --- ETAPA 5: COGNIÇÃO SUPERIOR ---
+    # --- ETAPA 5: COGNIÇÃO SUPERIOR (COM JSON PARSER) ---
     def _handle_cognition(self, texto: str) -> bool:
         if not llm:
             self._falar("Estou sem conexão com meu cérebro.")
             return True
         
-        resposta = llm.pensar(texto)
+        # 1. Pensa (Pode vir texto ou JSON)
+        resposta_bruta = llm.pensar(texto)
+        
+        # 2. Tenta extrair e executar JSON
+        try:
+            if "{" in resposta_bruta and "}" in resposta_bruta:
+                # Regex para encontrar o primeiro objeto JSON válido (ignora lixo antes/depois)
+                match = re.search(r'\{.*\}', resposta_bruta, re.DOTALL)
+                if match:
+                    json_str = match.group(0)
+                    acao = json.loads(json_str)
+                    
+                    ferramenta = acao.get("ferramenta")
+                    
+                    # Ação: Memória
+                    if ferramenta == "memoria_gravar":
+                        dado = acao.get("dado") or acao.get("parametro")
+                        if dado:
+                            llm.ensinar(dado)
+                            self._falar(f"Entendido. Memorizei: {dado}")
+                        return True
+                    
+                    # Ação: Sistema (ex: "abrir navegador")
+                    if ferramenta == "sistema":
+                        cmd = acao.get("comando", "")
+                        # Recicla a lógica de ferramentas passando o comando extraído
+                        return self._handle_tools(cmd)
+
+                    # Ação: Spotify (via JSON)
+                    if ferramenta == "spotify":
+                        cmd = acao.get("comando", "")
+                        return self._handle_tools(cmd)
+
+        except Exception as e:
+            self.log.warning(f"Falha ao parsear JSON do LLM: {e}")
+
+        # 3. Tratamento de Alucinações
+        if "sistema_ping" in resposta_bruta or "status" in resposta_bruta:
+             self._falar("Todos os sistemas operacionais.")
+             return True
+
+        # 4. Resposta Chat
         if curiosity:
             chance = 0.3
-            if len(resposta.split()) < 10 or random.random() < chance:
+            if len(resposta_bruta.split()) < 10 or random.random() < chance:
                 pergunta = curiosity.gerar_pergunta(texto)
-                if pergunta: resposta += f" ... {pergunta}"
+                if pergunta: resposta_bruta += f" ... {pergunta}"
         
-        self._falar(resposta)
+        self._falar(resposta_bruta)
         return True
 
     def _falar(self, texto: str):

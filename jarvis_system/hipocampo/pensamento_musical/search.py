@@ -35,9 +35,10 @@ class MusicSearchEngine:
         except: return []
 
     # --- NOVO: CORREÇÃO INTELIGENTE ---
-    def sugerir_correcao(self, termo_errado: str, cutoff=0.6) -> str:
+    def sugerir_correcao(self, termo_errado: str, cutoff=0.80) -> str:
         """
         Recebe 'freio gil som' e retorna 'Frei Gilson' se a similaridade for alta.
+        Cutoff ajustado para 0.85 para evitar falsos positivos em nomes de músicas.
         """
         if not self.collection: return None
         

@@ -1,10 +1,9 @@
 import psutil
 import pyautogui
-import platform
 try:
     import screen_brightness_control as sbc
-except:
-    sbc = None # Fallback se não der certo ou for Desktop sem monitor compatível
+except ImportError:
+    sbc = None 
 
 from .base_agente import AgenteEspecialista
 
@@ -20,11 +19,15 @@ class AgenteSistema(AgenteEspecialista):
             "brilho", "tela", "sistema", "mudo", "processador"
         ]
 
+    # --- CORREÇÃO: Voltamos para 'executar' para respeitar a BaseAgente ---
     def executar(self, comando: str, **kwargs) -> str:
         comando = comando.lower()
 
         # --- MONITORAMENTO ---
         if "bateria" in comando:
+            if not hasattr(psutil, "sensors_battery"):
+                return "Não consigo ler a bateria neste sistema."
+                
             bateria = psutil.sensors_battery()
             if not bateria:
                 return "Não consigo ler a bateria (talvez seja um Desktop)."
@@ -42,33 +45,39 @@ class AgenteSistema(AgenteEspecialista):
             total_gb = round(mem.total / (1024**3), 1)
             return f"Estou usando {uso_gb} Gigas de RAM de um total de {total_gb} Gigas."
 
-        # --- CONTROLE DE VOLUME (Simulando Teclas) ---
-        if "aumentar" in comando and ("volume" in comando or "som" in comando):
+        # --- CONTROLE DE VOLUME ---
+        if any(x in comando for x in ["aumentar", "aumenta", "sobe", "mais"]) and ("volume" in comando or "som" in comando):
             for _ in range(5): pyautogui.press('volumeup')
-            return "Aumentando o volume."
+            return "Volume aumentado."
         
-        if "diminuir" in comando or "baixar" in comando:
+        if any(x in comando for x in ["diminuir", "baixar", "diminui", "abaixa", "menos"]):
             for _ in range(5): pyautogui.press('volumedown')
-            return "Baixando o volume."
+            return "Volume diminuído."
         
-        if "mudo" in comando or "mutar" in comando:
+        if "mudo" in comando or "mutar" in comando or "silenciar" in comando:
             pyautogui.press('volumemute')
             return "Áudio mutado."
 
-        # --- BRILHO (Funciona melhor em Notebooks) ---
-        if "brilho" in comando and sbc:
+        # --- BRILHO ---
+        if "brilho" in comando:
+            if not sbc:
+                return "Controle de brilho indisponível."
             try:
-                if "aumentar" in comando:
-                    atual = sbc.get_brightness()
-                    novo = min(atual[0] + 20, 100)
+                atuais = sbc.get_brightness()
+                atual = atuais[0] if isinstance(atuais, list) else atuais
+                
+                if any(x in comando for x in ["aumentar", "aumenta", "sobe"]):
+                    novo = min(atual + 20, 100)
                     sbc.set_brightness(novo)
                     return f"Brilho aumentado para {novo}%."
-                elif "diminuir" in comando:
-                    atual = sbc.get_brightness()
-                    novo = max(atual[0] - 20, 0)
+                
+                elif any(x in comando for x in ["diminuir", "baixar", "abaixa"]):
+                    novo = max(atual - 20, 0)
                     sbc.set_brightness(novo)
                     return f"Brilho reduzido para {novo}%."
-            except:
-                return "Não consegui controlar o brilho do monitor."
+                
+                return f"O brilho atual é de {atual}%."
+            except Exception as e:
+                return f"Erro no brilho: {str(e)}"
 
         return "Comando de sistema não reconhecido."

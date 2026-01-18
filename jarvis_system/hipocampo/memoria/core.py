@@ -41,6 +41,35 @@ class MemoriaHipocampo:
         )
 
     # =======================
+    # Memória Genérica (Compatibilidade Brain LLM)
+    # =======================
+    def memorizar(self, fato: str) -> bool:
+        """
+        Método genérico para salvar fatos ensinados pelo usuário.
+        Ex: 'Gosto de azul', 'Meu nome é Diogo'.
+        """
+        if not self._conectar(): return False
+
+        timestamp = datetime.datetime.utcnow().isoformat()
+        
+        try:
+            doc_id = f"fact_{uuid.uuid4().hex[:8]}"
+            self.collection.add(
+                documents=[fato],
+                metadatas=[{"timestamp": timestamp, "tipo": "fato_usuario"}],
+                ids=[doc_id]
+            )
+            self.logger.info(f"💾 Fato memorizado: '{fato}'")
+            return True
+        except Exception as exc:
+            self.logger.error(f"❌ Erro ao memorizar fato: {exc}")
+            return False
+
+    # Aliases para compatibilidade com versões antigas do Cérebro
+    def adicionar_memoria(self, fato: str): return self.memorizar(fato)
+    def gravar(self, fato: str): return self.memorizar(fato)
+
+    # =======================
     # Memória Musical
     # =======================
     def memorizar_musica(self, musica: str, artista: str, tags: str = "spotify_likes", extra_info: Optional[Dict[str, Any]] = None):
@@ -109,8 +138,11 @@ class MemoriaHipocampo:
     # =======================
     # Recuperação
     # =======================
-    def relembrar(self, consulta: str, limite: int = 3, tags: Optional[str] = None) -> List[str]:
-        if not self._conectar() or not consulta.strip(): return []
+    def relembrar(self, consulta: str, limite: int = 3, tags: Optional[str] = None) -> str:
+        """
+        Busca memórias. Retorna STRING formatada (compatibilidade com LLM).
+        """
+        if not self._conectar() or not consulta.strip(): return ""
 
         try:
             if tags: tags = tags.lower().strip()
@@ -121,17 +153,26 @@ class MemoriaHipocampo:
                 n_results=limite,
                 where=filtro
             )
-            documentos = resultado.get("documents", [[]])[0]
-            return [doc for doc in documentos if doc]
+            
+            # O Chroma retorna uma lista de listas. Pegamos a primeira lista.
+            documentos = resultado.get("documents", [])
+            if documentos and len(documentos) > 0:
+                lista_docs = documentos[0]
+                # Formata para o LLM consumir como texto
+                return "\n".join([f"- {d}" for d in lista_docs if d])
+            
+            return ""
         except Exception as exc:
             self.logger.error(f"❌ Falha na recuperação: {exc}")
-            return []
+            return ""
 
     def consultar_experiencia_passada(self, agente: str, acao: str) -> List[str]:
         """Consulta experiências passadas de falhas ou erros."""
         if not self._conectar(): return []
         query = f"experiência {agente} executando {acao} falha erro frustração"
-        return self.relembrar(query, limite=2)
+        # Aqui retornamos lista bruta se precisar de processamento interno
+        res = self.relembrar(query, limite=2)
+        return res.split("\n") if res else []
 
     def status(self) -> str:
         if not self.connection_manager.is_connected:

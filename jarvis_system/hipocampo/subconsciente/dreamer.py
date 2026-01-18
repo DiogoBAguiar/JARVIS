@@ -1,5 +1,6 @@
 import os
 import logging
+import random
 from .memory import SubconscienteMemory
 from .log_reader import LogReader
 from .analyzer import LogAnalyzer
@@ -13,6 +14,9 @@ DEFAULT_LOG = os.path.join(root_dir, "logs", "jarvis_system.log")
 DEFAULT_MEM = os.path.join(root_dir, "jarvis_system", "data", "intuicao.json")
 
 class Subconsciente:
+    """
+    Processo de fundo: Analisa logs passados para aprender novos padrões de ruído.
+    """
     def __init__(self, log_path=None, memory_path=None):
         self.log_path = log_path if log_path else DEFAULT_LOG
         self.memory_path = memory_path if memory_path else DEFAULT_MEM
@@ -23,7 +27,7 @@ class Subconsciente:
         self.analyzer = LogAnalyzer()
 
     def sonhar(self):
-        """Fluxo principal de aprendizado."""
+        """Fluxo principal de aprendizado (Offline)."""
         
         # 1. Extração
         historico = self.reader.ler_logs()
@@ -47,3 +51,51 @@ class Subconsciente:
                 print("   💤 Conhecimento consolidado (sem novidades).")
         else:
             print("   💤 Nenhuma nova intuição formada.")
+
+class DayDreamer:
+    """
+    Processo de Tempo Real: Curiosidade e Interação.
+    Responsável por gerar perguntas de follow-up SEM QUEBRAR COMANDOS TÉCNICOS.
+    """
+    def __init__(self):
+        self.logger = logging.getLogger("SUBCONSCIENTE_DREAMER")
+        self.perguntas_genericas = [
+            "Posso ajudar em algo mais?",
+            "Há mais alguma tarefa pendente?",
+            "O que mais manda, chefe?",
+            "Deseja configurar algo mais?",
+            "Como posso ser útil agora?"
+        ]
+
+    def gerar_pergunta(self, input_usuario: str, resposta_atual: str = "") -> str:
+        """
+        Decide se deve adicionar uma pergunta.
+        
+        🛡️ BLINDAGEM DE JSON:
+        Se a resposta atual contiver chaves '{ }', retorna vazio para não corromper
+        o comando que vai para o Orchestrator.
+        """
+        
+        # 1. PROTEÇÃO CRÍTICA CONTRA JSON
+        if "{" in resposta_atual or "}" in resposta_atual:
+            return ""
+            
+        # 2. Proteção contra respostas de sistema
+        if "sistema" in resposta_atual.lower() and "online" in resposta_atual.lower():
+            return ""
+
+        # 3. Fator de Aleatoriedade (30% de chance de falar)
+        if random.random() > 0.3:
+            return ""
+
+        # 4. Lógica Contextual Simples
+        input_lower = input_usuario.lower()
+        
+        if "música" in input_lower or "tocar" in input_lower:
+            return "O volume está adequado?"
+        
+        if "projeto" in input_lower or "código" in input_lower:
+            return "Quer que eu registre isso na memória?"
+
+        # 5. Fallback Genérico
+        return random.choice(self.perguntas_genericas)

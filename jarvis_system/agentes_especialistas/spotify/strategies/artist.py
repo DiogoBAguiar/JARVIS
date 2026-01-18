@@ -8,7 +8,7 @@ logger = logging.getLogger("STRATEGY_ARTIST")
 class ArtistStrategy:
     """
     Estratégia Artista: Busca visualmente o nome do artista na lista de resultados
-    antes de clicar, evitando cliques errados em sugestões do Spotify.
+    antes de clicar, com suporte a debug visual e geometria ajustada à janela.
     """
 
     def __init__(self, vision, window, filter_manager):
@@ -23,17 +23,35 @@ class ArtistStrategy:
         if not anchor_point:
             anchor_point = self.filter_manager.selecionar(["artista", "artists", "artistas"])
         
-        # Define ponto de partida base (se o filtro falhou, chuta o meio)
-        start_x, start_y = anchor_point if anchor_point else (300, 250)
+        # Define ponto de partida base (Y é o mais importante aqui)
+        start_x, start_y = anchor_point if anchor_point else (400, 280)
 
         # 2. DEFINIÇÃO DA REGIÃO DE BUSCA (OCR)
-        # Olhamos para a área abaixo dos filtros onde os cards aparecem
+        # CORREÇÃO: Não dependemos do X do filtro, pois o resultado começa na esquerda.
+        # Tentamos pegar a geometria da janela para começar logo após a sidebar.
+        
+        base_x = 0 # Default (canto esquerdo da tela)
+        rect = self.window.obter_geometria()
+        if rect:
+            wl, wt, wr, wb = rect
+            base_x = wl + 80 # Pula a sidebar (ícones laterais)
+        else:
+            base_x = max(0, start_x - 450) # Fallback agressivo à esquerda
+
         region_results = (
-            max(0, start_x - 100),  # X: Um pouco à esquerda do filtro
-            start_y + 60,           # Y: Logo abaixo dos filtros
-            600,                    # Largura: Suficiente para o nome do artista
-            500                     # Altura: Vê os primeiros 3-4 resultados
+            int(base_x),                         # X: Começa na esquerda da área de conteúdo
+            int(start_y + 60),                   # Y: Logo abaixo dos filtros
+            1000,                                # W: bem largo para pegar 4+ colunas
+            600                                  # H
         )
+
+        # --- DEBUG VISUAL ---
+        try:
+            debug_file = "debug_visao_artista.png"
+            pyautogui.screenshot(region=region_results).save(debug_file)
+            logger.info(f"📸 Debug visual salvo em: {debug_file}")
+        except Exception as e:
+            logger.warning(f"Falha ao salvar debug visual: {e}")
 
         # 3. ESCANEAMENTO VISUAL
         logger.info(f"👁️ Lendo resultados para encontrar: '{termo_busca}'...")
@@ -66,58 +84,57 @@ class ArtistStrategy:
                 # Calcula o centro do clique baseado na caixa de texto encontrada
                 (tl, tr, br, bl) = bbox
                 # Assumindo que OCR retorna coordenadas absolutas (padrão EasyOCR/Vision Wrapper)
-                # Se for relativo, somar region_results[0] e [1]
+                # Se for relativo, somar region_results[0] e [1] - Ajuste conforme sua lib de visão
                 candidato_x = int((tl[0] + br[0]) / 2)
                 candidato_y = int((tl[1] + br[1]) / 2)
 
-        # 4. AÇÃO DE CLIQUE (INTELIGENTE OU FALLBACK)
+        # 4. AÇÃO DE CLIQUE
         if candidato_x and candidato_y:
             logger.info(f"🎯 ALVO CONFIRMADO: '{nome_encontrado}' ({int(melhor_score*100)}%). Clicando...")
             self._clique_simples(candidato_x, candidato_y)
         else:
-            # Fallback: Se o OCR não ler nada (ex: imagem do artista sem texto), usa o clique cego
+            # Fallback
             logger.warning(f"⚠️ Nome '{termo_busca}' não lido. Usando clique cego no 1º resultado.")
-            # Ajuste de coordenadas cegas (mais seguro)
-            blind_x = start_x
-            blind_y = start_y + 150 
+            
+            # Clique Cego Seguro: Usa o X da base da janela + um offset para pegar a 1ª coluna
+            # E não o X do filtro (que pode estar na 3ª coluna)
+            blind_x = base_x + 100 
+            blind_y = start_y + 100 
+            
+            logger.info(f"📍 Tentando clique geométrico em ({blind_x}, {blind_y})")
             self._clique_simples(blind_x, blind_y)
 
-        # 5. Tocar (Botão Verde)
+        # 5. Tocar
         logger.info("⏳ Carregando perfil...")
-        time.sleep(3.0) # Espera a animação de transição de página
+        time.sleep(2.5)
         
         logger.info("🟢 Procurando botão Play...")
         if self._clicar_botao_verde():
             return True
             
-        # Fallback final (Enter)
         logger.warning("⚠️ Play visual não achado. Tentando 'Enter' cego...")
         pyautogui.press('enter')
         return True
 
     def _clique_simples(self, x, y):
-        """Movimento humanoide para clicar"""
-        pyautogui.moveTo(x, y, duration=0.6) # Movimento mais suave
+        if x is None or y is None: return
+        pyautogui.moveTo(x, y, duration=0.6)
         pyautogui.click()
         time.sleep(0.5)
-        pyautogui.moveRel(200, 0) # Tira o mouse de cima para não atrapalhar leitura futura
+        pyautogui.moveRel(200, 0)
 
     def _clicar_botao_verde(self):
-        """Busca o botão verde de play em toda a tela ou região focada"""
-        # Tenta buscar na área comum de cabeçalho primeiro
         try:
             rect = self.window.obter_geometria()
             if rect:
                 wl, wt, wr, wb = rect
-                # Foca na metade esquerda superior, onde o botão play costuma ficar
-                region_play = (wl, wt + 100, int((wr-wl)*0.8), 500)
+                region_play = (wl, wt + 150, int((wr-wl)*0.8), 500)
                 pos = self.vision.procurar_botao_play(region=region_play)
                 if pos:
                     self._click_point(pos)
                     return True
         except: pass
 
-        # Busca Global se a focada falhar
         pos = self.vision.procurar_botao_play()
         if pos:
             self._click_point(pos)
