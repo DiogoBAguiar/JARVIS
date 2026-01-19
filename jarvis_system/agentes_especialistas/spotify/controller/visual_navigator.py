@@ -1,9 +1,16 @@
 import logging
 import pyautogui
 import re
+
+# Importação da Memória Espacial (Otimização de Performance)
+try:
+    from jarvis_system.cortex_motor.camera.spatial_memory import spatial_mem
+except ImportError:
+    spatial_mem = None # Fallback se não estiver configurado
+
 from ..strategies.track import TrackStrategy
 from ..strategies.artist import ArtistStrategy
-from ..strategies.filter_manager import FilterManager # <--- Nova Importação
+from ..strategies.filter_manager import FilterManager
 
 logger = logging.getLogger("SPOTIFY_NAVIGATOR")
 
@@ -12,6 +19,8 @@ class SpotifyVisualNavigator:
     Navegador Visual (Gerente).
     Coordena o FilterManager para selecionar a aba correta e 
     delega a interação específica para estratégias (Track/Artist).
+    
+    ATUALIZAÇÃO V3.7: Integração com Memória Espacial (Cache de UI).
     """
     
     def __init__(self, vision_system, window_manager, input_manager):
@@ -70,34 +79,68 @@ class SpotifyVisualNavigator:
 
     def find_and_click(self, text_target: str, tipo="musica"):
         """
-        Roteador Inteligente:
-        1. Seleciona o filtro correto na UI (usando FilterManager).
-        2. Passa a localização do filtro como 'âncora' para a estratégia.
+        Roteador Inteligente com CACHE:
+        1. Verifica Memória Espacial para clicar no filtro instantaneamente.
+        2. Se falhar, usa Visão (OCR) e memoriza a posição.
+        3. Executa a estratégia de conteúdo.
         """
         tipo = tipo.lower()
         logger.info(f"🔀 Navegando para: '{text_target}' | Tipo: {tipo}")
 
-        # --- PASSO 1: FILTRAGEM VISUAL ---
+        # Obter geometria da janela para usar como chave do cache
+        rect = self.window.obter_geometria() # (x, y, x2, y2)
+        win_w, win_h = 0, 0
+        if rect:
+            win_w = rect[2] - rect[0]
+            win_h = rect[3] - rect[1]
+
+        # --- PASSO 1: FILTRAGEM VISUAL (COM CACHE) ---
         palavras_chave = self.mapa_filtros.get(tipo)
         coords_filtro = None
+        usou_cache = False
 
         if palavras_chave:
-            # Tenta clicar no filtro correspondente (Ex: "Artistas")
-            coords_filtro = self.filter_manager.selecionar(palavras_chave)
+            nome_filtro_cache = f"filter_btn_{tipo}"
+            
+            # A) Tenta Via Rápida (Memória Espacial)
+            if spatial_mem and rect:
+                rel_coords = spatial_mem.buscar_coordenada(win_w, win_h, nome_filtro_cache)
+                if rel_coords:
+                    abs_x = rect[0] + rel_coords[0]
+                    abs_y = rect[1] + rel_coords[1]
+                    logger.info(f"⚡ [Cache UI] Clicando no filtro '{tipo}' em ({abs_x}, {abs_y})")
+                    pyautogui.click(abs_x, abs_y)
+                    coords_filtro = (abs_x, abs_y)
+                    usou_cache = True
+            
+            # B) Via Lenta (OCR) - Se não tinha cache ou falhou
             if not coords_filtro:
-                logger.warning(f"⚠️ Filtro para '{tipo}' falhou ou não existe. Tentando busca genérica.")
+                logger.info(f"👁️ [OCR] Buscando filtro visualmente...")
+                coords_filtro = self.filter_manager.selecionar(palavras_chave)
+                
+                # Aprende para a próxima vez
+                if coords_filtro and spatial_mem and rect:
+                    rel_x = coords_filtro[0] - rect[0]
+                    rel_y = coords_filtro[1] - rect[1]
+                    spatial_mem.memorizar_coordenada(win_w, win_h, nome_filtro_cache, rel_x, rel_y)
+
+            if not coords_filtro:
+                logger.warning(f"⚠️ Filtro para '{tipo}' falhou. Tentando busca genérica.")
         else:
             logger.warning(f"Tipo '{tipo}' não mapeado. Ignorando filtros.")
 
         # --- PASSO 2: EXECUÇÃO DA ESTRATÉGIA ---
-        # Se for album/playlist, usamos a estratégia de artista (card grande) como fallback
+        
         if tipo in ["artista", "artist", "album", "playlist"]:
-            logger.info(f"🎨 Executando Strategy: ARTIST (Com âncora: {coords_filtro})")
+            logger.info(f"🎨 Executando Strategy: ARTIST")
+            # Se usou cache, damos um pequeno sleep para garantir que a UI atualizou
+            if usou_cache: pyautogui.sleep(0.5) 
             return self.artist_strategy.executar(text_target, anchor_point=coords_filtro)
         
         else:
             # Padrão: Música (Track)
-            logger.info(f"🎹 Executando Strategy: TRACK (Com âncora: {coords_filtro})")
+            logger.info(f"🎹 Executando Strategy: TRACK")
+            if usou_cache: pyautogui.sleep(0.5)
             return self.track_strategy.executar(text_target, anchor_point=coords_filtro)
 
     def click_green_play_button(self):
