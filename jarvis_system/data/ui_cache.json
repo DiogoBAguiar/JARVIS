@@ -1,0 +1,26 @@
+{
+    "spotify": {
+        "1160x680": {
+            "filter_btn_artista": {
+                "x": 373,
+                "y": 95
+            },
+            "filter_btn_m\u00fasica": {
+                "x": 207,
+                "y": 95
+            },
+            "filter_btn_musica": {
+                "x": 207,
+                "y": 95
+            },
+            "filter_btn_playlists": {
+                "x": 207,
+                "y": 96
+            },
+            "filter_btn_playlist": {
+                "x": 372,
+                "y": 96
+            }
+        }
+    }
+}
