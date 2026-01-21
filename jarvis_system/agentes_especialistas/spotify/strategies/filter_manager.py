@@ -14,12 +14,12 @@ logger = logging.getLogger("SPOTIFY_FILTER")
 
 class FilterManager:
     """
-    Gerencia a barra de filtros do Spotify (Tudo, Músicas, Artistas, Podcasts, etc.).
+    Gerencia a barra de filtros do Spotify (Tudo, Músicas, Artistas, Podcasts).
     
-    LÓGICA HÍBRIDA (Sniper & Canhão):
-    1. Tenta usar coordenada salva (Sniper).
-    2. Se a validação visual da coordenada falhar (ou não existir), faz varredura completa (Canhão).
-    3. Se encontrar na varredura, ATUALIZA a memória para corrigir o erro futuro.
+    VERSÃO 5.0 (Dual-Slot Memory):
+    - Armazena até 2 posições conhecidas para cada filtro (Principal e Alternativa).
+    - Se o layout muda (ex: sidebar abre/fecha), ele tenta a posição alternativa antes de escanear.
+    - Implementa rotação de memória: Nova -> Principal, Antiga Principal -> Alternativa.
     """
 
     def __init__(self, vision, window):
@@ -33,7 +33,10 @@ class FilterManager:
         """
         target_str = "/".join(nomes_alvo)
         termo_principal = nomes_alvo[0] # Ex: "artista"
-        cache_key = f"filter_btn_{termo_principal}"
+        
+        # Chaves de Cache (Slots 1 e 2)
+        key_primary = f"filter_btn_{termo_principal}"
+        key_backup = f"filter_btn_{termo_principal}_alt"
 
         # 1. Define a geometria da janela
         rect = self.window.obter_geometria()
@@ -46,35 +49,28 @@ class FilterManager:
         height = win_bottom - win_top
 
         # =========================================================
-        # FASE 1: SNIPER (Tenta Cache + Validação Visual Rápida)
+        # FASE 1: SNIPER DUPLO (Verifica Principal, depois Backup)
         # =========================================================
         if spatial_mem:
-            coords = spatial_mem.buscar_coordenada(width, height, cache_key)
-            if coords:
-                abs_x = win_left + coords[0]
-                abs_y = win_top + coords[1]
-                
-                logger.info(f"⚡ [Sniper] Cache existe para '{termo_principal}'. Validando posição ({abs_x}, {abs_y})...")
-                
-                # Valida visualmente apenas aquele pedacinho (Debug Específico)
-                if self._validar_posicao(abs_x, abs_y, nomes_alvo, termo_principal):
-                    logger.info(f"✅ [Sniper] Validação visual OK. Clicando.")
-                    self._clicar(abs_x, abs_y)
-                    return (abs_x, abs_y)
-                else:
-                    logger.warning(f"⚠️ [Sniper] Validação falhou (Botão moveu ou layout mudou). Iniciando correção...")
-                    # Se falhou, não retorna! Deixa cair para a FASE 2 para corrigir.
+            # 1.1 Tenta Slot Principal
+            if self._tentar_sniper(width, height, win_left, win_top, key_primary, nomes_alvo, "Principal"):
+                return self._recuperar_abs(width, height, win_left, win_top, key_primary)
+
+            # 1.2 Tenta Slot Backup (Se o layout mudou para um estado anterior)
+            if self._tentar_sniper(width, height, win_left, win_top, key_backup, nomes_alvo, "Backup"):
+                # Se o backup funcionou, o ideal seria promover ele, mas mantemos simples por enquanto
+                return self._recuperar_abs(width, height, win_left, win_top, key_backup)
 
         # =========================================================
-        # FASE 2: CANHÃO (Busca Visual Completa + Correção de Cache)
+        # FASE 2: CANHÃO (Busca Visual Completa + Rotação de Memória)
         # =========================================================
-        logger.info(f"🧹 [Canhão] Iniciando varredura visual para: '{target_str}'...")
+        logger.info(f"🧹 [Canhão] Nenhuma memória válida. Iniciando varredura visual para: '{target_str}'...")
         
-        # --- Configuração da Região de Busca ---
+        # Configuração da Região de Busca
         sidebar_margin = 120
         top_offset = 70
         search_height = 150
-        search_width = int((width - sidebar_margin) * 0.8)
+        search_width = int((width - sidebar_margin) * 0.9) # Aumentei um pouco a largura
         
         region_top = (
             win_left + sidebar_margin, 
@@ -83,7 +79,6 @@ class FilterManager:
             search_height
         )
 
-        # Leitura OCR da região
         elementos = self.vision.ler_tela(region=region_top)
         
         melhor_candidato = None
@@ -93,10 +88,8 @@ class FilterManager:
         # Fuzzy Matching
         for bbox, texto, conf in elementos:
             txt_lower = texto.lower().strip()
-            
             for alvo in nomes_alvo:
                 score = SequenceMatcher(None, txt_lower, alvo.lower()).ratio()
-                
                 if alvo.lower() == txt_lower: score = 1.0
                 elif alvo.lower() in txt_lower and len(txt_lower) < len(alvo) + 5: score = 0.95
 
@@ -105,7 +98,7 @@ class FilterManager:
                     melhor_candidato = bbox
                     texto_encontrado = texto
 
-        # Se encontrou na varredura -> Clica e CORRIGE O CACHE
+        # Se encontrou: Clica e Atualiza Memória (Rotação)
         if melhor_candidato:
             (tl, tr, br, bl) = melhor_candidato
             cx_box = int((tl[0] + br[0]) / 2)
@@ -121,50 +114,71 @@ class FilterManager:
             logger.info(f"🔘 Filtro '{texto_encontrado}' encontrado ({int(melhor_score*100)}%): Clicando em ({final_x}, {final_y})")
             self._clicar(final_x, final_y)
             
-            # --- APRENDIZADO / CORREÇÃO ---
+            # --- ROTAÇÃO DE MEMÓRIA ---
             if spatial_mem:
                 rel_x = final_x - win_left
                 rel_y = final_y - win_top
-                logger.info(f"💾 [Correção] Atualizando Memória Espacial: '{cache_key}' -> ({rel_x}, {rel_y})")
-                spatial_mem.memorizar_coordenada(width, height, cache_key, rel_x, rel_y)
+                
+                # 1. Recupera o que estava no slot Principal antigo
+                coords_old_primary = spatial_mem.buscar_coordenada(width, height, key_primary)
+                
+                # 2. Se existia algo antes, move para o Backup (preserva a história)
+                if coords_old_primary:
+                    # Só move se for diferente da nova posição (evita duplicar)
+                    if abs(coords_old_primary[0] - rel_x) > 20 or abs(coords_old_primary[1] - rel_y) > 20:
+                        logger.info(f"💾 [Memória] Movendo coordenada antiga para Backup (Slot 2).")
+                        spatial_mem.memorizar_coordenada(width, height, key_backup, coords_old_primary[0], coords_old_primary[1])
+
+                # 3. Salva a nova posição como Principal
+                logger.info(f"💾 [Memória] Salvando nova posição Principal (Slot 1): ({rel_x}, {rel_y})")
+                spatial_mem.memorizar_coordenada(width, height, key_primary, rel_x, rel_y)
 
             return (final_x, final_y)
 
-        logger.warning(f"❌ Filtro '{target_str}' não encontrado visualmente na região analisada.")
+        logger.warning(f"❌ Filtro '{target_str}' não encontrado visualmente.")
         return None
 
-    def _validar_posicao(self, x, y, keywords, nome_debug):
-        """
-        Validação 'Sniper': Tira print minúsculo da área prevista para confirmar texto.
-        Isso evita cliques cegos em posições obsoletas.
-        """
-        w, h = 140, 60 # Janela pequena de validação (um pouco maior para margem de erro)
+    def _tentar_sniper(self, w, h, wl, wt, key, keywords, slot_name):
+        """Helper para validar uma coordenada da memória."""
+        coords = spatial_mem.buscar_coordenada(w, h, key)
+        if coords:
+            abs_x = wl + coords[0]
+            abs_y = wt + coords[1]
+            
+            logger.info(f"⚡ [Sniper {slot_name}] Verificando ({abs_x}, {abs_y})...")
+            
+            if self._validar_posicao(abs_x, abs_y, keywords):
+                logger.info(f"✅ [Sniper {slot_name}] Validação OK! Clicando.")
+                self._clicar(abs_x, abs_y)
+                return True
+            else:
+                logger.warning(f"⚠️ [Sniper {slot_name}] Falhou. O botão não está aqui.")
+        return False
+
+    def _recuperar_abs(self, w, h, wl, wt, key):
+        coords = spatial_mem.buscar_coordenada(w, h, key)
+        if coords: return (wl + coords[0], wt + coords[1])
+        return None
+
+    def _validar_posicao(self, x, y, keywords):
+        """Validação Visual Rápida (Recorte pequeno)"""
+        w, h = 140, 60 
         left = max(0, x - w//2)
         top = max(0, y - h//2)
         region = (left, top, w, h)
         
         try:
-            # DEBUG: Salva o que o sniper está vendo
-            # nome_arquivo = f"debug_sniper_{nome_debug}.png"
-            # pyautogui.screenshot(region=region).save(nome_arquivo)
-            
             resultado = self.vision.ler_tela(region=region)
-            
             for _, texto, _ in resultado:
-                # Verifica palavras chave
                 if any(k.lower() in texto.lower() for k in keywords):
                     return True
-                # Match parcial forte
                 if any(SequenceMatcher(None, texto.lower(), k.lower()).ratio() > 0.8 for k in keywords):
                     return True
-            
             return False
-        except Exception as e:
-            logger.error(f"Erro na validação visual (Sniper): {e}")
-            return False
+        except: return False
 
     def _clicar(self, x, y):
+        x, y = int(x), int(y)
         pyautogui.moveTo(x, y, duration=0.4)
         pyautogui.click()
-        # Tempo estendido para garantir a transição da UI (resolve erro Linkin Park)
-        time.sleep(2.5)
+        time.sleep(2.5) # Tempo para transição de UI

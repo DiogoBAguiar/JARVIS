@@ -2,11 +2,11 @@
     "spotify": {
         "1160x680": {
             "filter_btn_artista": {
-                "x": 373,
+                "x": 289,
                 "y": 95
             },
             "filter_btn_m\u00fasica": {
-                "x": 207,
+                "x": 609,
                 "y": 95
             },
             "filter_btn_musica": {
@@ -20,6 +20,70 @@
             "filter_btn_playlist": {
                 "x": 372,
                 "y": 96
+            },
+            "artist_pos_coldplay": {
+                "x": 150,
+                "y": 343
+            },
+            "artist_pos_linkin_park": {
+                "x": 158,
+                "y": 342
+            },
+            "artist_pos_metallica": {
+                "x": 152,
+                "y": 343
+            },
+            "play_btn_pos_coldplay": {
+                "x": 135,
+                "y": 382
+            },
+            "artist_pos_metallia": {
+                "x": 152,
+                "y": 343
+            },
+            "play_btn_pos_metallia": {
+                "x": 136,
+                "y": 382
+            },
+            "play_btn_pos_playlist_foco": {
+                "x": 136,
+                "y": 333
+            },
+            "play_btn_pos_linkin_park": {
+                "x": 136,
+                "y": 382
+            },
+            "filter_btn_artista_alt": {
+                "x": 373,
+                "y": 95
+            },
+            "play_btn_pos_metallica": {
+                "x": 136,
+                "y": 382
+            },
+            "filter_btn_m\u00fasica_alt": {
+                "x": 207,
+                "y": 95
+            },
+            "artist_pos_foco": {
+                "x": 220,
+                "y": 181
+            },
+            "play_btn_pos_foco": {
+                "x": 136,
+                "y": 333
+            },
+            "ui_structure_first_track_pos": {
+                "x": 450,
+                "y": 147
+            },
+            "ui_pos_track_list_header": {
+                "x": 450,
+                "y": 147
+            },
+            "play_btn_pos_playlist_playlist_foco": {
+                "x": 136,
+                "y": 333
             }
         }
     }

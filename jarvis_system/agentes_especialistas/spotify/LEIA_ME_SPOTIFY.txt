@@ -1,66 +1,99 @@
-==============================================================================
-📁 DOCUMENTAÇÃO TÉCNICA - MÓDULO SPOTIFY (Squad Audio)
-==============================================================================
-Autor: J.A.R.V.I.S. Architecture Team
-Status: Modularizado (V3.0)
-Objetivo: Controle autônomo do Spotify via Visão Computacional e OCR.
+# 🎵 Módulo Especialista: Spotify (J.A.R.V.I.S.)
 
-------------------------------------------------------------------------------
-🏗️ ARQUITETURA DO MÓDULO
-------------------------------------------------------------------------------
-Este módulo segue o padrão "Controller-Service" adaptado para Agentes de IA.
-Cada arquivo tem uma responsabilidade única para evitar código "espaguete".
+Este diretório contém o "Agente Especialista" responsável por controlar o Spotify. Ele opera como um sistema autônomo dentro do J.A.R.V.I.S., possuindo seu próprio ciclo de "Sentir, Pensar e Agir".
 
-FLUXO DE EXECUÇÃO:
-1. [agent.py] recebe o comando de texto do Jarvis.
-2. [nlu.py] traduz o texto para uma Intenção (Ex: "tocar x" -> PLAY_SEARCH).
-3. [controller.py] decide QUEM vai resolver o problema.
-4. [vision.py] olha para a tela para achar o botão/texto.
-5. [window.py] garante que a janela está aberta e focada.
-6. [input.py] move o "mouse fantasma" para clicar.
+A arquitetura é baseada em **Visão Computacional**, **Memória Espacial (Cache)** e **LLMs** para interpretação de intenção.
 
-------------------------------------------------------------------------------
-📄 DESCRIÇÃO DOS ARQUIVOS
-------------------------------------------------------------------------------
+---
 
-1. agent.py (A Cara do Agente)
-   - É a porta de entrada.
-   - Herda de `AgenteEspecialista` para ser reconhecido pelo Jarvis.
-   - Define os gatilhos ("tocar", "spotify").
-   - Não tem lógica complexa, apenas delega para o Controller.
+## 📂 Estrutura de Pastas e Arquivos
 
-2. controller.py (O Maestro)
-   - É o cérebro operacional.
-   - Coordena os outros módulos (Vision, Input, Window).
-   - Exemplo de Lógica: "Para tocar uma música, primeiro foca a janela, 
-     depois tenta achar o botão verde, se falhar, tenta achar o texto".
+### 1. `agent/` (O Maestro)
+Responsável pelo ciclo de vida e orquestração do agente. É o ponto de entrada.
+* **`manager.py`**: A classe principal `AgenteSpotify`.
+    * Gerencia o fluxo: `Consciência (Sentir)` -> `Brain (Pensar)` -> `Controller (Agir)`.
+    * Realiza triagem inicial (sinais vitais, internet, verificação de processo) antes de qualquer ação.
+* **`config.py`**: Configurações estáticas, como o nome do agente e as palavras-gatilho (ex: "tocar", "pausar", "spotify").
 
-3. nlu.py (O Tradutor Inteligente)
-   - Natural Language Understanding (Entendimento de Linguagem Natural).
-   - Conecta-se ao Cérebro (LLM/Gemini) para corrigir erros de digitação.
-   - Transforma "tocar link park" em {intent: PLAY, query: "Linkin Park"}.
+### 2. `brain/` (O Cérebro Cognitivo)
+Onde a decisão inteligente acontece. Transforma texto do usuário em instruções técnicas.
+* **`core.py` (`SpotifyBrain`)**: Analisa o input do usuário. Decide se deve chamar o LLM (para intenções complexas) ou usar o Sistema Límbico (para comandos rápidos).
+* **`llm_setup.py`**: Fábrica de conexões com IAs (Groq/Llama-3 ou Google Gemini).
+* **`limbic_system.py`**: O "Sistema Límbico" (Rápido e Instintivo). Contém regras Regex para comandos de mídia (play, pause, next) que executam instantaneamente sem custo de API.
+* **`tools.py`**: Definições das ferramentas que a IA pode "chamar" (ex: `play_music`, `get_artist`).
 
-4. vision.py (Os Olhos)
-   - Responsável pelo OCR (EasyOCR) e reconhecimento de imagens.
-   - Tira prints da tela e procura por texto ou ícones (play_spotify.png).
-   - Retorna coordenadas (X, Y) do que encontrou.
+### 3. `consciencia/` (Sensores e Estado)
+Monitora o ambiente antes de qualquer ação.
+* **`monitor.py`**: Verifica se o processo `Spotify.exe` está rodando e se há conexão com a internet.
+* **`vitals.py`**: Agrega os sinais vitais do sistema.
+* **`proprioception.py`**: Verifica se a janela do Spotify está visível, foca a janela se necessário e gerencia o estado "físico" do app.
 
-5. input.py (As Mãos)
-   - Responsável pela ação física.
-   - Implementa o "Ghost Click" (Win32 API) para clicar sem mover o mouse real.
-   - Implementa atalhos de teclado (Ctrl+L, Espaço).
+### 4. `controller/` (O Sistema Nervoso)
+Traduz as intenções do Cérebro em movimentos e coordenação.
+* **`spotify_controller.py`**: A interface pública de controle. Recebe comandos de alto nível (ex: `play_search`) e coordena os submódulos.
+* **`visual_navigator.py`**: **[CRÍTICO]** O "Gerente de Navegação".
+    * É o cérebro da navegação visual.
+    * Roteia o pedido para a estratégia correta (`ArtistStrategy`, `PlaylistStrategy` ou `TrackStrategy`) baseada na intenção.
+    * Gerencia o `FilterManager` para garantir que estamos na aba certa antes de buscar.
+* **`process_manager.py`**: Cuida de abrir, fechar, matar e reiniciar o processo do Spotify no Windows.
 
-6. window.py (O Gerenciador de Janela)
-   - Encontra a janela do "Spotify Premium" ou "Spotify Free".
-   - Traz a janela para frente se estiver minimizada.
-   - Garante que o clique vai acertar o lugar certo.
+### 5. `strategies/` (Memória Muscular & Estratégias de Navegação)
+Aqui reside a inteligência de navegação otimizada. Cada arquivo é especialista em clicar em um tipo de conteúdo.
 
-------------------------------------------------------------------------------
-🛠️ COMO MANTER/EVOLUIR
-------------------------------------------------------------------------------
-- Quer mudar a cor do botão que ele procura? -> Mexa em `vision.py`.
-- O clique não está funcionando no Windows 11? -> Ajuste o `input.py`.
-- Quer adicionar um comando novo "Adicionar à Playlist"? -> Comece pelo `nlu.py`.
-- O Jarvis não acha a janela? -> Atualize o nome em `window.py`.
+* **`filter_manager.py` (V5.0 - Dual Slot Memory)**:
+    * Gerencia os botões de filtro no topo (Tudo, Músicas, Artistas, Playlists).
+    * **Recurso:** Usa **Memória Dupla** (Principal e Backup). Se o layout muda (ex: janela redimensionada), ele tenta a posição anterior conhecida antes de escanear a tela, permitindo adaptação instantânea a mudanças de layout.
 
-------------------------------------------------------------------------------
+* **`artist.py` (V6.1 - Sniper/Cannon)**:
+    * Especialista em encontrar e tocar Artistas.
+    * **Recurso:** Memoriza separadamente onde o artista aparece na lista E onde o botão "Play" verde fica na página do artista. Usa validação visual local ("Sniper") antes de clicar para garantir precisão.
+
+* **`playlist.py` (V5.0 - Dedicated Strategy)**:
+    * Especialista em Playlists. Similar ao Artist, mas com memória segregada.
+    * **Recurso:** Garante que não haja conflito de coordenadas entre bandas e playlists de mesmo nome e força o filtro correto.
+
+* **`track.py` (V5.0 - Turbo Geometry)**:
+    * Especialista em tocar músicas específicas (Tracks).
+    * **Recurso:** Prioriza velocidade extrema. Utiliza a âncora visual do Filtro para calcular geometricamente a posição da primeira música da lista (Offset fixo), realizando um "Clique Turbo" sem necessidade de leitura lenta de OCR da lista.
+
+### 6. `vision/` (Os Olhos)
+O sistema de visão computacional.
+* **`system.py`**: Gerencia screenshots e a interface com bibliotecas de OCR.
+* **`ocr.py`**: Wrapper para o EasyOCR (ou Tesseract). Lê texto da tela para identificar nomes de músicas e artistas.
+* **`finder.py`**: Usa *Template Matching* (OpenCV) para encontrar ícones visuais exatos, como o botão "Play Verde" (`play_spotify.png`).
+
+### 7. `window/` & `input/` (Interação com SO)
+Camada de baixo nível (Drivers).
+* **`window/manager.py`**: Encontra a janela do Spotify, traz para frente, maximiza e gerencia geometria (Win32 API).
+* **`input/manager.py`**: Simula interações humanas: teclado (atalhos como `Space`, `Ctrl+Right`) e cliques do mouse controlados.
+
+### 8. `img/` (Ativos)
+* Imagens de referência `.png` usadas pelo `finder.py` para localizar botões visuais na interface.
+
+---
+
+## ⚡ Fluxo de Execução (Exemplo: "Tocar Playlist Foco")
+
+1.  **Entrada:** Usuário diz "Jarvis, ouvir playlist foco".
+2.  **Agente:** `manager.py` valida internet e passa para o `brain`.
+3.  **Cérebro:** `core.py` (via LLM) decide: `{'acao': 'tocar', 'termo': 'foco', 'tipo': 'playlist'}`.
+4.  **Controller:** Recebe a ordem e chama `visual_navigator.find_and_click("foco", tipo="playlist")`.
+5.  **Navegador:**
+    * Identifica o tipo "playlist".
+    * Chama `filter_manager` para clicar no filtro "Playlists" (usando Cache Duplo se disponível).
+    * Delega para `PlaylistStrategy`.
+6.  **Estratégia (Playlist):**
+    * **Sniper:** Verifica na memória `playlist_pos_foco`. Se souber, valida e clica.
+    * **Canhão:** Se não souber, escaneia a lista, encontra "Foco", clica e aprende.
+    * **Play:** Entra no perfil, busca o botão Play (memória ou visão) e clica.
+7.  **Resultado:** A playlist começa a tocar.
+
+---
+
+## 🧠 Conceitos Chave Implementados
+
+* **Sniper Mode:** Tenta clicar em coordenadas salvas na memória (`spatial_memory`). Valida visualmente apenas um pequeno recorte (rápido).
+* **Cannon Mode:** Escaneia a tela inteira com OCR (lento, mas robusto). Usado apenas quando o Sniper falha ou é a primeira vez.
+* **Self-Healing (Auto-Cura):** Se o layout muda e o Sniper falha, o sistema roda o Canhão e **atualiza a memória** automaticamente para a próxima vez.
+* **Dual-Slot Memory:** (Filtros) Guarda a posição atual e a posição anterior, permitindo alternar entre layouts (ex: com/sem sidebar) instantaneamente.
+* **Router Inteligente:** O Navegador distingue entre Artistas, Músicas e Playlists para usar a estratégia de clique e memória mais adequada para cada tipo de mídia.

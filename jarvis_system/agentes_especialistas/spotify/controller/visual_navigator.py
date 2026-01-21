@@ -7,6 +7,7 @@ import re
 
 from ..strategies.track import TrackStrategy
 from ..strategies.artist import ArtistStrategy
+from ..strategies.playlist import PlaylistStrategy  # <--- [NOVO IMPORT]
 from ..strategies.filter_manager import FilterManager
 
 logger = logging.getLogger("SPOTIFY_NAVIGATOR")
@@ -15,9 +16,9 @@ class SpotifyVisualNavigator:
     """
     Navegador Visual (Gerente).
     Coordena o FilterManager para selecionar a aba correta e 
-    delega a interação específica para estratégias (Track/Artist).
+    delega a interação específica para estratégias (Track/Artist/Playlist).
     
-    ATUALIZAÇÃO V4.0: Delegação Total de Cache para FilterManager.
+    ATUALIZAÇÃO V5.0: Suporte dedicado a Playlists.
     """
     
     def __init__(self, vision_system, window_manager, input_manager):
@@ -31,6 +32,7 @@ class SpotifyVisualNavigator:
         # 2. Inicializa as Estratégias (Injetando o filter_manager)
         self.track_strategy = TrackStrategy(vision_system, window_manager, self.filter_manager)
         self.artist_strategy = ArtistStrategy(vision_system, window_manager, self.filter_manager)
+        self.playlist_strategy = PlaylistStrategy(vision_system, window_manager, self.filter_manager) # <--- [NOVA INSTÂNCIA]
         
         # 3. Mapa de Sinônimos para Filtros
         self.mapa_filtros = {
@@ -86,7 +88,7 @@ class SpotifyVisualNavigator:
         Fluxo Otimizado:
         1. Identifica a chave correta do filtro (normalização).
         2. Pede ao FilterManager para garantir a aba (usando Cache+Sniper ou OCR).
-        3. Executa a estratégia de conteúdo.
+        3. Executa a estratégia especializada (Playlist, Artist ou Track).
         """
         tipo_original = tipo.lower()
         
@@ -115,12 +117,20 @@ class SpotifyVisualNavigator:
 
         # --- PASSO 2: EXECUÇÃO DA ESTRATÉGIA ---
         
-        if tipo_chave in ["artista", "album", "playlist"]:
+        # 2.1 ESTRATÉGIA DE PLAYLIST (ROTEAMENTO NOVO)
+        if tipo_chave == "playlist":
+            logger.info(f"📂 Executando Strategy: PLAYLIST")
+            if coords_filtro: pyautogui.sleep(0.8) # Delay tático para UI
+            return self.playlist_strategy.executar(text_target, anchor_point=coords_filtro)
+
+        # 2.2 ESTRATÉGIA DE ARTISTA / ALBUM
+        elif tipo_chave in ["artista", "album"]:
             logger.info(f"🎨 Executando Strategy: ARTIST")
             # Pequeno delay para garantir transição de tela após clique no filtro
             if coords_filtro: pyautogui.sleep(0.8)
             return self.artist_strategy.executar(text_target, anchor_point=coords_filtro)
         
+        # 2.3 ESTRATÉGIA DE MÚSICA (TRACK - Padrão)
         else:
             # Padrão: Música (Track)
             logger.info(f"🎹 Executando Strategy: TRACK")
