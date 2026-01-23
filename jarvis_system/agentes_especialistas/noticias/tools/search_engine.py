@@ -20,7 +20,7 @@ class NewsEngine:
             
             if not os.path.exists(json_path):
                 logger.warning(f"⚠️ Arquivo sources.json não encontrado em: {json_path}")
-                return {} # Retorna vazio ou um fallback básico se preferir
+                return {} 
 
             with open(json_path, 'r', encoding='utf-8') as f:
                 sources = json.load(f)
@@ -35,10 +35,9 @@ class NewsEngine:
         Modo Passivo Multi-Fonte:
         Percorre a lista de fontes da categoria, pega um pouco de cada e mistura.
         """
-        # Garante que urls seja sempre uma lista, mesmo se não achar a categoria
+        # Garante que urls seja sempre uma lista
         urls = self.rss_sources.get(categoria, self.rss_sources.get("geral", []))
         
-        # Se urls for string (legado) ou lista vazia, trata
         if isinstance(urls, str): urls = [urls]
         if not urls:
             logger.warning(f"⚠️ Nenhuma fonte definida para categoria: {categoria}")
@@ -88,10 +87,15 @@ class NewsEngine:
         return None
 
     def search_topic(self, query, limit=3):
-        """Modo Ativo: Pesquisa Web"""
+        """Modo Ativo: Pesquisa Web (Com proteção contra Ratelimit)."""
         logger.info(f"🌍 Pesquisando na Web: '{query}'...")
         try:
             results = self.ddgs.news(keywords=query, region="br-pt", safesearch="off", max_results=limit)
+            
+            # Se results for None (algumas versões do DDGS fazem isso no erro), retorna vazio
+            if not results:
+                return []
+
             clean_results = []
             for r in results:
                 clean_results.append({
@@ -103,6 +107,9 @@ class NewsEngine:
                     "image": r.get('image')
                 })
             return clean_results
+
         except Exception as e:
-            logger.error(f"Erro no DuckDuckGo: {e}")
+            # Captura Ratelimit (HTTP 202/429) e outros erros de rede
+            logger.error(f"⚠️ Erro na Busca Web (DuckDuckGo): {e}")
+            # Retorna lista vazia para que o sistema continue usando Mock ou RSS
             return []

@@ -1,29 +1,31 @@
 import logging
 import socket
-from ..controller.news_controller import NewsController
+# ALTERAÇÃO: Conectando direto ao Cérebro V3 para garantir os recursos novos (PDF, Classificador)
+from ..brain.core import NewsBrain
 from . import config
 
 logger = logging.getLogger("NEWS_MANAGER")
 
 class NewsAgent:
     """
-    Classe Principal do Agente de Notícias.
-    Responsável pelo ciclo de vida e verificações de pré-requisitos (Internet).
+    Classe Principal do Agente de Notícias (V3).
+    Responsável pelo ciclo de vida, verificação de saúde e ponte com o Cérebro.
     """
 
     def __init__(self):
         self.name = config.AGENT_NAME
         self.triggers = config.TRIGGERS
-        self.controller = None
+        self.brain = None # Mudança de Controller para Brain
         self.is_ready = False
         
-        # Inicialização Lazy (só carrega o cérebro pesado se necessário)
+        # Inicialização Lazy
         self._inicializar()
 
     def _inicializar(self):
         logger.info(f"📰 Inicializando {self.name} v{config.VERSION}...")
         try:
-            self.controller = NewsController()
+            # Instancia o Cérebro V3 (que carrega o Search Engine, Reporter e LLM)
+            self.brain = NewsBrain()
             self.is_ready = True
             logger.info("✅ Agente de Notícias pronto para operar.")
         except Exception as e:
@@ -32,40 +34,55 @@ class NewsAgent:
 
     def verificar_saude(self) -> bool:
         """
-        Sensor Vital: Verifica se há internet antes de tentar buscar algo.
-        Evita erros feios de timeout no meio do processo.
+        Sensor Vital: Verifica se há internet via Socket (rápido e leve).
         """
         try:
-            # Tenta conectar ao DNS do Google (rápido e leve)
-            # O 'with' garante que a conexão fecha sozinha, evitando ResourceWarning
-            with socket.create_connection(("8.8.8.8", 53), timeout=3):
+            # Tenta conectar ao DNS do Google (8.8.8.8) na porta 53
+            with socket.create_connection(("8.8.8.8", 53), timeout=2):
                 return True
         except OSError:
-            logger.warning("⚠️ Agente de Notícias detectou falta de conexão com a Internet.")
             return False
 
     def pode_lidar(self, user_input: str) -> bool:
         """
-        Verifica se a frase contém gatilhos deste agente.
-        (Usado pelo Router Principal do Jarvis)
+        O Porteiro (Gatekeeper).
+        Verifica se a frase contém gatilhos definidos no config.py.
         """
+        if not self.triggers: return False
+        
         termo = user_input.lower()
-        return any(gatilho in termo for gatilho in self.triggers)
+        
+        # Lógica de verificação
+        for gatilho in self.triggers:
+            # Verifica se o gatilho existe na frase
+            # Ex: "cs" in "resultado do cs" -> True
+            if gatilho in termo:
+                return True
+        return False
 
     def executar(self, user_input: str) -> str:
         """
         Executa a tarefa.
-        Fluxo: Check Internet -> Controller -> Brain -> Resposta
+        Fluxo: Check Internet -> Brain V3 -> Resposta (Texto ou Aviso de PDF)
         """
-        if not self.is_ready:
-            return "O sistema de notícias não foi inicializado corretamente, senhor."
+        # 1. Verifica Inicialização
+        if not self.is_ready or not self.brain:
+            # Tenta reinicializar caso tenha falhado antes
+            self._inicializar()
+            if not self.is_ready:
+                return "O sistema de notícias está offline no momento, senhor."
 
-        # 1. Sentir (Check Vitals)
+        # 2. Sentir (Check Vitals)
         if not self.verificar_saude():
-            return "Senhor, parece que estamos sem conexão com a internet. Não consigo buscar as notícias agora."
+            return "Senhor, detectei uma falha na conexão com a rede mundial. Não consigo atualizar as notícias agora."
 
-        # 2. Agir (Delegar ao Controller)
-        return self.controller.handle_request(user_input)
+        # 3. Agir (Delegar ao Cérebro V3)
+        try:
+            # Chama o método processar_solicitacao do core.py atualizado
+            return self.brain.processar_solicitacao(user_input)
+        except Exception as e:
+            logger.error(f"Erro na execução do Brain: {e}")
+            return "Tive um problema interno ao processar os dados da imprensa, senhor."
 
-# Singleton para fácil importação
+# Singleton para importação fácil no main.py
 news_agent = NewsAgent()

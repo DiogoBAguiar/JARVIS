@@ -1,0 +1,135 @@
+{
+  "default": {
+    "router": {
+      "intent": "briefing",
+      "topic": "Assunto Geral",
+      "search_term": "noticias do dia",
+      "recommended_sources": ["rss_geral"],
+      "complexity": "low"
+    },
+    "synthesis": "Senhor, estou operando em modo de simulação. Eis um resumo das principais notícias do dia, compiladas a partir das fontes gerais disponíveis."
+  },
+  "scenarios": [
+    {
+      "keywords": ["política", "governo", "congresso", "eleições"],
+      "router": {
+        "intent": "briefing",
+        "topic": "Política Nacional",
+        "search_term": "notícias política brasileira",
+        "recommended_sources": ["rss_politica"],
+        "complexity": "low"
+      },
+      "synthesis": "Senhor, no cenário político nacional, as articulações no Congresso avançam sobre reformas estruturais enquanto o Planalto enfrenta pressão por ajustes fiscais. Destaque para a votação da LDO."
+    },
+    {
+      "keywords": ["futebol", "esporte", "jogo", "campeonato"],
+      "router": {
+        "intent": "briefing",
+        "topic": "Esportes",
+        "search_term": "resultados futebol brasileiro",
+        "recommended_sources": ["rss_esporte"],
+        "complexity": "low"
+      },
+      "synthesis": "Senhor, no esporte, a rodada foi marcada por confrontos decisivos. Clubes do topo da tabela mantêm a disputa acirrada pelo título, enquanto a zona de rebaixamento tem novos integrantes."
+    },
+    {
+      "keywords": ["anime", "mangá", "otaku"],
+      "router": {
+        "intent": "briefing",
+        "topic": "Cultura Otaku",
+        "search_term": "lançamentos anime manga",
+        "recommended_sources": ["rss_otaku"],
+        "complexity": "low"
+      },
+      "synthesis": "Senhor, no universo otaku, novos títulos ganham destaque com estreias aguardadas e adaptações de mangás de sucesso chegando às telas."
+    },
+    {
+      "keywords": ["game", "jogos", "videogame"],
+      "router": {
+        "intent": "briefing",
+        "topic": "Games",
+        "search_term": "notícias games",
+        "recommended_sources": ["rss_games"],
+        "complexity": "low"
+      },
+      "synthesis": "Senhor, no setor de games, estúdios anunciaram expansões e atualizações que movimentam a comunidade global, com foco em otimização de performance."
+    },
+    {
+      "keywords": ["cs", "valorant", "esports", "e-sports", "furia", "fallen"],
+      "router": {
+        "intent": "briefing",
+        "topic": "E-sports Competitivo",
+        "search_term": "resultados cs valorant hltv vlr",
+        "recommended_sources": ["rss_esports"],
+        "complexity": "medium"
+      },
+      "synthesis": "Senhor, no competitivo, equipes de CS e Valorant apresentaram partidas decisivas em torneios internacionais. Destaque para a performance tática das equipes brasileiras."
+    },
+    {
+      "keywords": ["bitcoin", "crypto", "criptomoeda", "binance", "ethereum"],
+      "router": {
+        "intent": "analise",
+        "topic": "Mercado de Criptomoedas",
+        "search_term": "bitcoin juros fed impacto",
+        "recommended_sources": ["rss_crypto"],
+        "complexity": "high"
+      },
+      "synthesis": "Senhor, analisei profundamente o mercado cripto.\n\n### Cenário Macro\nO Bitcoin reage à política monetária dos EUA com volatilidade elevada. O anúncio recente do FED sobre a manutenção das taxas de juros gerou uma correção imediata de 2.5% nos ativos de risco.\n\n### Análise Técnica\nO suporte em **$58.000** demonstrou resiliência, com volume de compra institucional aumentando nas últimas 24 horas. O Ethereum segue correlacionado, mas com desempenho inferior devido às taxas de gás elevadas.\n\n### Conclusão Estratégica\nA tendência de curto prazo é neutra, mas com viés de alta para o próximo trimestre, condicionado à aprovação dos novos ETFs. Recomenda-se monitoramento dos níveis de suporte."
+    },
+    {
+      "keywords": ["economia", "dólar", "investimento", "empreendedor"],
+      "router": {
+        "intent": "briefing",
+        "topic": "Economia & Mercados",
+        "search_term": "economia brasileira hoje dólar",
+        "recommended_sources": ["rss_economia"],
+        "complexity": "medium"
+      },
+      "synthesis": "Senhor, na economia, o dólar oscila enquanto o mercado avalia indicadores fiscais e inflação. O Ibovespa opera em leve alta impulsionado por commodities."
+    },
+    {
+      "keywords": ["nvidia", "apple", "iphone", "tech"],
+      "router": {
+        "intent": "analise",
+        "topic": "Análise Setorial: Tecnologia",
+        "search_term": "notícias nvidia apple ethereum",
+        "recommended_sources": ["rss_tech"],
+        "complexity": "high"
+      },
+      "synthesis": "Senhor, compilei um relatório sobre as Big Techs.\n\n### Nvidia e AI\nA Nvidia continua dominando o setor de hardware para IA, reportando lucros recordes. A demanda por GPUs H100 não mostra sinais de desaceleração.\n\n### Apple vs Mercado\nA Apple enfrenta desafios regulatórios na UE, mas o lançamento do novo iPhone deve reaquecer as vendas no varejo global.\n\n### Perspectiva\nO setor de tecnologia permanece como o principal motor de crescimento dos índices globais, apesar dos valuations esticados."
+    },
+    {
+      "keywords": ["guerra", "geopolítica", "internacional"],
+      "router": {
+        "intent": "analise",
+        "topic": "Geopolítica Global",
+        "search_term": "conflito internacional impactos globais",
+        "recommended_sources": ["rss_mundo"],
+        "complexity": "high"
+      },
+      "synthesis": "Senhor, o cenário geopolítico atual pressiona cadeias produtivas. Tensões no Oriente Médio elevam o preço do petróleo Brent, impactando diretamente a inflação global.\n\n### Impactos\n1. Aumento do custo logístico.\n2. Volatilidade em moedas emergentes.\n\n### Conclusão\nO ambiente exige cautela e diversificação de portfólio."
+    },
+    {
+      "keywords": ["relatório", "dossiê", "detalhado", "análise"],
+      "router": {
+        "intent": "analise",
+        "topic": "Relatório de Inteligência",
+        "search_term": "análise detalhada mercado global",
+        "recommended_sources": ["web_search"],
+        "complexity": "high"
+      },
+      "synthesis": "Senhor, conforme solicitado, gerei um relatório analítico aprofundado.\n\n### Sumário Executivo\nOs dados indicam uma mudança de tendência nos mercados globais, com migração de capital para renda fixa.\n\n### Dados Chave\n- Inflação: Estável\n- Emprego: Robusto\n- Consumo: Em desaceleração\n\n### Veredito Final\nO momento é de observação. Um documento em PDF detalhado foi gerado com todos os gráficos e fontes."
+    },
+    {
+      "keywords": ["piada", "engraçada", "humor"],
+      "router": {
+        "intent": "analise",
+        "topic": "A Ciência do Humor",
+        "search_term": "teoria do humor",
+        "recommended_sources": ["web_search"],
+        "complexity": "high"
+      },
+      "synthesis": "Senhor, aqui está uma análise técnica sobre o humor.\n\n### Estrutura da Piada\nO humor deriva da quebra de expectativa. Uma premissa lógica é estabelecida e, em seguida, subvertida pelo 'punchline'.\n\n### Exemplo Prático\nPor que o computador foi ao médico? Porque tinha um vírus.\n\n### Conclusão\nO riso é uma resposta fisiológica ao inesperado inofensivo. Detalhes técnicos no PDF."
+    }
+  ]
+}
