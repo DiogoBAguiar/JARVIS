@@ -1,6 +1,5 @@
 relatorios_inteligencia/
-
-
+temp_images/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

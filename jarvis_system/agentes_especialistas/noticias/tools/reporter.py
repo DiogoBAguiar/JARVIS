@@ -1,222 +1,187 @@
 import os
-import requests
-from fpdf import FPDF
+import logging
+import pdfkit
+import markdown
+import re
+import requests # Necessário para baixar a imagem
 from datetime import datetime
-import textwrap
+from jinja2 import Environment, FileSystemLoader
 
-# --- PALETA DE CORES (DESIGN SYSTEM) ---
-COLOR_PRIMARY = (10, 25, 60)    # Navy Blue
-COLOR_ACCENT = (180, 0, 0)      # Vermelho
-COLOR_TEXT = (20, 20, 20)       # Preto Suave
-COLOR_GRAY = (100, 100, 100)    # Cinza
-COLOR_BG_BOX = (240, 245, 250)  # Azul Gelo
-
-class PDFJornal(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.set_margins(20, 20, 20)
-        self.set_auto_page_break(auto=True, margin=20)
-
-    def _sanitizar(self, text):
-        """
-        Converte caracteres Unicode complexos para Latin-1 seguro.
-        Evita o crash '\u2022'.
-        """
-        if not text: return ""
-        # Mapa de substituição manual para caracteres comuns que o LLM usa
-        replacements = {
-            '\u2022': '-',  # Bullet point •
-            '\u2013': '-',  # En dash –
-            '\u2014': '-',  # Em dash —
-            '\u2018': "'",  # Left single quote
-            '\u2019': "'",  # Right single quote
-            '\u201c': '"',  # Left double quote “
-            '\u201d': '"',  # Right double quote ”
-            '\u2026': '...', # Ellipsis …
-        }
-        for char, replacement in replacements.items():
-            text = text.replace(char, replacement)
-        
-        # Codificação final de segurança (substitui o que sobrar por ?)
-        return text.encode('latin-1', 'replace').decode('latin-1')
-
-    def header(self):
-        # 1. Título
-        self.set_font('Times', 'B', 26)
-        self.set_text_color(*COLOR_PRIMARY)
-        self.cell(0, 12, 'THE J.A.R.V.I.S. CHRONICLE', 0, 1, 'C')
-        
-        # 2. Linhas
-        self.set_draw_color(50, 50, 50)
-        self.set_line_width(0.3)
-        y_line = self.get_y() + 2
-        self.line(20, y_line, 190, y_line)
-        self.line(20, y_line + 1.5, 190, y_line + 1.5)
-        
-        # 3. Metadados
-        self.ln(5)
-        meses = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 
-                 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
-        agora = datetime.now()
-        data_extenso = f"{agora.day} de {meses.get(agora.month)}, {agora.year}"
-        
-        self.set_font('Arial', 'B', 8)
-        self.set_text_color(*COLOR_GRAY)
-        # Usei PIPE (|) em vez de bullet (•) para evitar crash
-        meta_text = f"JOAO PESSOA, PB   |   {data_extenso.upper()}   |   INTELLIGENCE BRIEFING"
-        self.cell(0, 6, self._sanitizar(meta_text), 0, 1, 'C')
-        self.ln(10)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.set_text_color(150, 150, 150)
-        # Rodapé seguro
-        texto = f'J.A.R.V.I.S. AI System | Pagina {self.page_no()}'
-        self.cell(0, 10, self._sanitizar(texto), 0, 0, 'C')
-
-    def draw_lead_paragraph(self, text):
-        self.set_font('Times', 'B', 12)
-        self.set_text_color(*COLOR_TEXT)
-        self.multi_cell(0, 6, self._sanitizar(text))
-        self.ln(5)
-
-    def draw_body_paragraph(self, text):
-        self.set_font('Times', '', 11)
-        self.set_text_color(30, 30, 30)
-        self.multi_cell(0, 6, self._sanitizar(text))
-        self.ln(3)
-
-    def draw_insight_box(self, text):
-        self.ln(5)
-        self.set_fill_color(*COLOR_BG_BOX)
-        self.set_draw_color(*COLOR_PRIMARY)
-        self.set_line_width(0.5)
-        
-        y_start = self.get_y()
-        self.set_font('Arial', 'I', 10)
-        self.set_text_color(*COLOR_PRIMARY)
-        
-        # Hack para simular padding: desenha texto recuado
-        x_orig = self.get_x()
-        self.set_x(x_orig + 4)
-        self.multi_cell(160, 6, self._sanitizar(text))
-        self.set_x(x_orig) # Volta X
-        
-        # Desenha a linha lateral azul (Quote style)
-        y_end = self.get_y()
-        self.set_draw_color(*COLOR_PRIMARY)
-        self.set_line_width(1.5)
-        self.line(22, y_start + 1, 22, y_end - 1)
-        self.ln(5)
+logger = logging.getLogger("NEWS_REPORTER")
 
 class NewsReporter:
     def __init__(self):
+        # 1. Configurar Caminho do wkhtmltopdf
+        possible_paths = [
+            r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe",
+            r"C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe",
+            r"D:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe" 
+        ]
+        
+        self.path_wkhtmltopdf = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                self.path_wkhtmltopdf = path
+                break
+        
+        if self.path_wkhtmltopdf:
+            self.config = pdfkit.configuration(wkhtmltopdf=self.path_wkhtmltopdf)
+        else:
+            logger.warning("⚠️ wkhtmltopdf não encontrado. O PDF não será gerado.")
+            self.config = None
+
+        # 2. Configurar Jinja2
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
+        self.template_dir = os.path.join(base_path, "templates")
+        self.img_cache_dir = os.path.join(base_path, "temp_images") # Pasta para imagens temporárias
+        
+        if not os.path.exists(self.img_cache_dir): os.makedirs(self.img_cache_dir)
+        
+        if os.path.exists(self.template_dir):
+            self.env = Environment(loader=FileSystemLoader(self.template_dir))
+        else:
+            logger.error(f"❌ Pasta de templates não encontrada em: {self.template_dir}")
+
         self.output_folder = "relatorios_inteligencia"
-        self.img_cache = "temp_images"
         if not os.path.exists(self.output_folder): os.makedirs(self.output_folder)
-        if not os.path.exists(self.img_cache): os.makedirs(self.img_cache)
 
     def _download_image(self, url):
+        """Baixa a imagem da web para uma pasta local."""
         if not url: return None
         try:
+            filename = f"img_{abs(hash(url))}.jpg"
+            filepath = os.path.join(self.img_cache_dir, filename)
+            
+            # Se já baixou, retorna caminho formatado
+            if os.path.exists(filepath): return self._format_path(filepath)
+
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers, timeout=5, stream=True)
+            response = requests.get(url, headers=headers, timeout=5)
             if response.status_code == 200:
-                ext = url.split('.')[-1].split('?')[0]
-                if len(ext) > 4 or len(ext) < 2: ext = "jpg"
-                filename = f"{self.img_cache}/img_{abs(hash(url))}.{ext}"
-                with open(filename, 'wb') as f:
+                with open(filepath, 'wb') as f:
                     f.write(response.content)
-                return filename
-        except:
-            return None
+                return self._format_path(filepath)
+        except Exception as e:
+            logger.debug(f"⚠️ Falha ao baixar imagem: {e}")
         return None
 
-    def criar_pdf(self, titulo_topico, texto_analise, dados_brutos):
+    def _format_path(self, path):
+        """Formata o caminho para o padrão file:/// que o wkhtmltopdf exige no Windows."""
+        abs_path = os.path.abspath(path).replace("\\", "/")
+        if os.name == 'nt':
+            return f"file:///{abs_path}"
+        return abs_path
+
+    def _preparar_html_conteudo(self, markdown_text):
+        text_clean = markdown_text.replace(r"\$", "$") 
+        html = markdown.markdown(text_clean)
+        html = re.sub(r'<p>', '<p class="drop-cap">', html, count=1)
+        return html
+
+    def criar_pdf(self, topico, texto_markdown, dados_brutos):
+        logger.info(f"📄 Renderizando arquivo PDF sobre: {topico}...")
+
         try:
-            pdf = PDFJornal()
-            pdf.add_page()
+            conteudo_html = self._preparar_html_conteudo(texto_markdown)
+            data_hoje = datetime.now().strftime("%d/%m/%Y")
+            dia_semana = datetime.now().strftime("%A").upper()
+            
+            imagem_destaque = None
+            galeria_imagens = []
 
-            # 1. MANCHETE
-            pdf.set_font('Times', 'B', 24)
-            pdf.set_text_color(*COLOR_ACCENT)
-            topico_safe = pdf._sanitizar(titulo_topico.upper())
-            pdf.multi_cell(0, 10, topico_safe, align='C')
-            pdf.ln(8)
+            # --- LÓGICA HÍBRIDA: GALERIA vs DESTAQUE ÚNICO ---
+            
+            # 1. Detecta se é um tópico geral (ex: "Notícias do dia", "Resumo Geral")
+            termos_gerais = ["notícias", "resumo", "briefing", "geral", "hoje", "dia", "manchetes", "principais"]
+            eh_topico_geral = any(t in topico.lower() for t in termos_gerais) and len(topico.split()) < 6
 
-            # 2. IMAGEM
-            img_url = next((item.get('image') for item in dados_brutos if item.get('image')), None)
-            img_path = self._download_image(img_url)
-            
-            if img_path:
-                try:
-                    x_pos = 30
-                    width = 150
-                    pdf.image(img_path, x=x_pos, w=width)
-                    # Borda fina
-                    pdf.set_draw_color(200, 200, 200)
-                    pdf.set_line_width(0.2)
-                    y_img = pdf.get_y()
-                    # Legenda
-                    pdf.ln(2)
-                    pdf.set_font('Arial', '', 7)
-                    pdf.set_text_color(150, 150, 150)
-                    pdf.cell(0, 4, "Imagem recuperada via Web/RSS - Fonte ilustrativa", 0, 1, 'C')
-                    pdf.ln(8)
-                except: pass
-
-            # 3. CORPO
-            clean_text = texto_analise.replace('**', '').replace('###', '').replace('##', '')
-            paragrafos = clean_text.split('\n')
-            paragrafos = [p for p in paragrafos if len(p.strip()) > 5]
-            
-            if paragrafos:
-                pdf.draw_lead_paragraph(paragrafos[0])
-                for p in paragrafos[1:]:
-                    if "Conclusão" in p or "Em resumo" in p or "Análise:" in p:
-                        pdf.draw_insight_box(p)
-                    else:
-                        pdf.draw_body_paragraph(p)
-
-            # 4. FONTES
-            pdf.ln(10)
-            if pdf.get_y() > 240: pdf.add_page()
-            
-            pdf.set_fill_color(245, 245, 245)
-            pdf.set_font('Arial', 'B', 9)
-            pdf.set_text_color(*COLOR_PRIMARY)
-            pdf.cell(0, 8, "FONTES VERIFICADAS:", 0, 1, 'L', fill=True)
-            
-            pdf.set_font('Arial', '', 8)
-            pdf.set_text_color(50, 50, 50)
-            
-            count = 0
-            for item in dados_brutos:
-                if count >= 5: break
-                titulo = item.get('titulo', 'N/A')[:90].replace('\n', ' ')
-                fonte = item.get('fonte', 'Web')
+            if eh_topico_geral:
+                logger.info("📸 Modo Galeria ativado (Tópico Geral). Coletando imagens das notícias...")
+                # Coleta até 4 imagens das notícias reais
+                for item in dados_brutos:
+                    if len(galeria_imagens) >= 4: break
+                    
+                    url_img = item.get('image')
+                    if url_img:
+                        caminho_local = self._download_image(url_img)
+                        if caminho_local:
+                            galeria_imagens.append({
+                                "url": caminho_local,
+                                "titulo": item.get('titulo', 'Notícia')
+                            })
                 
-                # Sanitização manual aqui também
-                safe_line = pdf._sanitizar(f"[{fonte}] {titulo}")
+                # Se não achou imagens suficientes (min 2), desiste da galeria e tenta destaque único
+                if len(galeria_imagens) < 2:
+                    eh_topico_geral = False
+                    galeria_imagens = []
+
+            # 2. Modo Destaque Único (Se não for galeria)
+            if not galeria_imagens:
+                imagens_tematicas = {
+                    "cripto": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
+                    "bitcoin": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
+                    "futebol": "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=1000&auto=format&fit=crop",
+                    "esporte": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop",
+                    "política": "https://images.unsplash.com/photo-1529101091760-61df6be5f18b?q=80&w=1000&auto=format&fit=crop",
+                    "binance": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=1000&auto=format&fit=crop",
+                    "dólar": "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=1000&auto=format&fit=crop",
+                    "games": "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=1000&auto=format&fit=crop",
+                    "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop"
+                }
+
+                url_escolhida = None
+                # Prioridade: Temática
+                for chave, url in imagens_tematicas.items():
+                    if chave in topico.lower():
+                        url_escolhida = url
+                        logger.info(f"🖼️ Usando imagem temática para: {chave}")
+                        break
                 
-                pdf.set_x(25)
-                pdf.cell(5, 5, ">>", 0, 0)
-                pdf.cell(0, 5, safe_line, 0, 1)
-                count += 1
+                # Fallback: RSS
+                if not url_escolhida:
+                    url_escolhida = next((item.get('image') for item in dados_brutos if item.get('image')), None)
 
-            # SALVAR
-            filename = f"{self.output_folder}/Relatorio_Jarvis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            pdf.output(filename)
-            
-            return os.path.abspath(filename)
-            
-        finally:
-            # Garante limpeza mesmo se der erro
-            self._limpar_cache()
+                # Baixa a imagem
+                caminho = self._download_image(url_escolhida)
+                if caminho:
+                    imagem_destaque = caminho
 
-    def _limpar_cache(self):
-        if os.path.exists(self.img_cache):
-            for f in os.listdir(self.img_cache):
-                try: os.remove(os.path.join(self.img_cache, f))
-                except: pass
+            # 3. Renderizar Template
+            if not self.env: raise Exception("Ambiente Jinja2 falhou")
+            template = self.env.get_template("newspaper.html")
+            
+            html_final = template.render(
+                topico=topico,
+                conteudo_html=conteudo_html,
+                dados=dados_brutos,
+                data_hoje=data_hoje,
+                dia_semana=dia_semana,
+                imagem_destaque=imagem_destaque,
+                galeria_imagens=galeria_imagens # Passa a lista para o template
+            )
+
+            # 4. Configurações do PDF
+            options = {
+                'page-size': 'A4',
+                'encoding': "UTF-8",
+                'margin-top': '10mm',
+                'margin-right': '10mm',
+                'margin-bottom': '10mm',
+                'margin-left': '10mm',
+                'enable-local-file-access': "", 
+                'no-outline': None,
+                'zoom': 1.0
+            }
+
+            safe_title = topico.replace(" ", "_").replace("/", "-")
+            filename = f"Jornal_{safe_title}_{datetime.now().strftime('%H%M%S')}.pdf"
+            output_path = os.path.join(self.output_folder, filename)
+            
+            pdfkit.from_string(html_final, output_path, configuration=self.config, options=options)
+            
+            logger.info(f"✅ Arquivo PDF salvo: {output_path}")
+            return output_path
+
+        except Exception as e:
+            logger.error(f"❌ Erro PDF: {e}")
+            return None

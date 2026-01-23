@@ -1,123 +1,196 @@
 {
-  "geral": [
-    "https://g1.globo.com/rss/g1/",
-    "https://www.cnnbrasil.com.br/feed/",
-    "https://noticias.uol.com.br/rss.xml",
-    "https://www.estadao.com.br/rss/ultimas.xml",
-    "https://www.folha.uol.com.br/rss/ultimosegundo.xml",
-    "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml"
-  ],
+  "version": "2.0",
+  "default_language": "pt-BR",
+  "update_policy": {
+    "refresh_minutes": 30,
+    "max_articles_per_source": 15
+  },
+  "categories": {
+    "geral": {
+      "description": "Notícias gerais do Brasil e mundo",
+      "priority": 1,
+      "sources": [
+        { "name": "G1", "url": "https://g1.globo.com/rss/g1/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "news", "active": true },
+        { "name": "CNN Brasil", "url": "https://www.cnnbrasil.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "news", "active": true },
+        { "name": "UOL Notícias", "url": "https://noticias.uol.com.br/rss.xml", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "news", "active": true },
+        { "name": "Estadão", "url": "https://www.estadao.com.br/rss/ultimas.xml", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "news", "active": true },
+        { "name": "Folha", "url": "https://www.folha.uol.com.br/rss/ultimosegundo.xml", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "news", "active": true },
+        { "name": "Agência Brasil", "url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "news", "active": true }
+      ]
+    },
 
-  "paraiba": [
-    "https://g1.globo.com/rss/g1/pb/paraiba/",
-    "https://jornaldaparaiba.com.br/feed",
-    "https://portalcorreio.com.br/feed/",
-    "https://wscom.com.br/feed/",
-    "https://www.clickpb.com.br/feed/"
-  ],
+    "paraiba": {
+      "description": "Notícias regionais da Paraíba",
+      "priority": 2,
+      "sources": [
+        { "name": "G1 Paraíba", "url": "https://g1.globo.com/rss/g1/pb/paraiba/", "region": "PB", "language": "pt-BR", "reliability": 0.88, "type": "regional", "active": true },
+        { "name": "Jornal da Paraíba", "url": "https://jornaldaparaiba.com.br/feed", "region": "PB", "language": "pt-BR", "reliability": 0.85, "type": "regional", "active": true },
+        { "name": "Portal Correio", "url": "https://portalcorreio.com.br/feed/", "region": "PB", "language": "pt-BR", "reliability": 0.83, "type": "regional", "active": true },
+        { "name": "Wscom", "url": "https://wscom.com.br/feed/", "region": "PB", "language": "pt-BR", "reliability": 0.8, "type": "regional", "active": true },
+        { "name": "ClickPB", "url": "https://www.clickpb.com.br/feed/", "region": "PB", "language": "pt-BR", "reliability": 0.8, "type": "regional", "active": true }
+      ]
+    },
 
-  "politica": [
-    "https://www.conexaopolitica.com.br/feed/",
-    "https://www.cnnbrasil.com.br/politica/feed/",
-    "https://g1.globo.com/rss/g1/politica/",
-    "https://www.poder360.com.br/rss/",
-    "https://www.estadao.com.br/politica/rss.xml",
-    "https://www.cartacapital.com.br/feed/"
-  ],
+    "politica": {
+      "description": "Política nacional",
+      "priority": 1,
+      "sources": [
+        { "name": "Conexão Política", "url": "https://www.conexaopolitica.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.75, "type": "opinion", "active": true },
+        { "name": "CNN Política", "url": "https://www.cnnbrasil.com.br/politica/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "news", "active": true },
+        { "name": "G1 Política", "url": "https://g1.globo.com/rss/g1/politica/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "news", "active": true },
+        { "name": "Poder360", "url": "https://www.poder360.com.br/rss/", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "analysis", "active": true },
+        { "name": "Estadão Política", "url": "https://www.estadao.com.br/politica/rss.xml", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "news", "active": true },
+        { "name": "Carta Capital", "url": "https://www.cartacapital.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.82, "type": "analysis", "active": true }
+      ]
+    },
 
-  "esporte": [
-    "https://ge.globo.com/rss/ge/",
-    "https://www.espn.com.br/espn/rss/news",
-    "https://www.lance.com.br/rss",
-    "https://www.terra.com.br/rss/esportes.xml"
-  ],
+    "esporte": {
+      "description": "Notícias esportivas gerais",
+      "priority": 2,
+      "sources": [
+        { "name": "GE Globo", "url": "https://ge.globo.com/rss/ge/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "sports", "active": true },
+        { "name": "ESPN Brasil", "url": "https://www.espn.com.br/espn/rss/news", "region": "Global", "language": "pt-BR", "reliability": 0.9, "type": "sports", "active": true },
+        { "name": "Lance!", "url": "https://www.lance.com.br/rss", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "sports", "active": true },
+        { "name": "Terra Esportes", "url": "https://www.terra.com.br/rss/esportes.xml", "region": "BR", "language": "pt-BR", "reliability": 0.8, "type": "sports", "active": true }
+      ]
+    },
 
-  "futebol": [
-    "https://ge.globo.com/rss/ge/futebol/",
-    "https://www.espn.com.br/espn/rss/news",
-    "https://www.lance.com.br/rss/futebol",
-    "https://www.uol.com.br/esporte/futebol/rss.xml"
-  ],
+    "futebol": {
+      "description": "Futebol brasileiro e internacional",
+      "priority": 1,
+      "sources": [
+        { "name": "GE Futebol", "url": "https://ge.globo.com/rss/ge/futebol/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "sports", "active": true },
+        { "name": "Lance! Futebol", "url": "https://www.lance.com.br/rss/futebol", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "sports", "active": true },
+        { "name": "UOL Futebol", "url": "https://www.uol.com.br/esporte/futebol/rss.xml", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "sports", "active": true }
+      ]
+    },
 
-  "esporte-eletronico": [
-    "https://einerd.com.br/categoria/esports/feed/",
-    "https://www.hltv.org/rss/news",
-    "https://www.vlr.gg/rss",
-    "https://maisesports.com.br/feed/",
-    "https://draft5.gg/feed",
-    "https://valorantzone.gg/feed/"
-  ],
+    "esporte-eletronico": {
+      "description": "E-sports e competitivo",
+      "priority": 3,
+      "sources": [
+        { "name": "HLTV", "url": "https://www.hltv.org/rss/news", "region": "Global", "language": "en", "reliability": 0.95, "type": "stats", "active": true },
+        { "name": "VLR.gg", "url": "https://www.vlr.gg/rss", "region": "Global", "language": "en", "reliability": 0.93, "type": "stats", "active": true },
+        { "name": "Mais Esports", "url": "https://maisesports.com.br/feed", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "sports", "active": true },
+        { "name": "Draft5", "url": "https://draft5.gg/feed", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "sports", "active": true },
+        { "name": "Valorant Zone", "url": "https://valorantzone.gg/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "sports", "active": true }
+      ]
+    },
 
-  "nerd": [
-    "https://einerd.com.br/feed/",
-    "https://jovemnerd.com.br/feed/",
-    "https://omelete.com.br/feed/",
-    "https://nerdcast.com.br/feed/"
-  ],
+    "nerd": {
+      "description": "Cultura pop e nerd",
+      "priority": 3,
+      "sources": [
+        { "name": "Ei Nerd", "url": "https://einerd.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "entertainment", "active": true },
+        { "name": "Jovem Nerd", "url": "https://jovemnerd.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "entertainment", "active": true },
+        { "name": "Omelete", "url": "https://omelete.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "entertainment", "active": true },
+        { "name": "NerdCast", "url": "https://nerdcast.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "podcast", "active": true }
+      ]
+    },
 
-  "otaku": [
-    "https://einerd.com.br/categoria/otaku/feed/",
-    "https://www.crunchyroll.com/newsfeed/rss",
-    "https://www.animeunited.com.br/feed/"
-  ],
+    "otaku": {
+      "description": "Animes e mangás",
+      "priority": 3,
+      "sources": [
+        { "name": "Ei Nerd Otaku", "url": "https://einerd.com.br/categoria/otaku/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "entertainment", "active": true },
+        { "name": "Crunchyroll News", "url": "https://www.crunchyroll.com/newsfeed/rss", "region": "Global", "language": "en", "reliability": 0.9, "type": "entertainment", "active": true },
+        { "name": "Anime United", "url": "https://www.animeunited.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "entertainment", "active": true }
+      ]
+    },
 
-  "games": [
-    "https://einerd.com.br/categoria/games/feed/",
-    "https://br.ign.com/feed.xml",
-    "https://www.adrenaline.com.br/feed/",
-    "https://www.tecmundo.com.br/rss"
-  ],
+    "games": {
+      "description": "Notícias de games",
+      "priority": 3,
+      "sources": [
+        { "name": "Ei Nerd Games", "url": "https://einerd.com.br/categoria/games/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.85, "type": "games", "active": true },
+        { "name": "IGN Brasil", "url": "https://br.ign.com/feed.xml", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "games", "active": true },
+        { "name": "Adrenaline", "url": "https://www.adrenaline.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "games", "active": true },
+        { "name": "TecMundo", "url": "https://www.tecmundo.com.br/rss", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "tech", "active": true }
+      ]
+    },
 
-  "tecnologia": [
-    "https://g1.globo.com/rss/g1/tecnologia/",
-    "https://canaltech.com.br/rss/",
-    "https://olhardigital.com.br/rss",
-    "https://www.tecmundo.com.br/rss",
-    "https://www.wired.com/feed/rss"
-  ],
+    "tecnologia": {
+      "description": "Tecnologia e inovação",
+      "priority": 2,
+      "sources": [
+        { "name": "G1 Tecnologia", "url": "https://g1.globo.com/rss/g1/tecnologia/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "tech", "active": true },
+        { "name": "Canaltech", "url": "https://canaltech.com.br/rss/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "tech", "active": true },
+        { "name": "Olhar Digital", "url": "https://olhardigital.com.br/rss", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "tech", "active": true },
+        { "name": "Wired", "url": "https://www.wired.com/feed/rss", "region": "Global", "language": "en", "reliability": 0.95, "type": "tech", "active": true }
+      ]
+    },
 
-  "crypto": [
-    "https://portaldobitcoin.uol.com.br/feed/",
-    "https://livecoins.com.br/feed/",
-    "https://br.cointelegraph.com/rss",
-    "https://cryptoslate.com/feed/"
-  ],
+    "crypto": {
+      "description": "Criptomoedas e blockchain",
+      "priority": 1,
+      "sources": [
+        { "name": "Portal do Bitcoin", "url": "https://portaldobitcoin.uol.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "finance", "active": true },
+        { "name": "Livecoins", "url": "https://livecoins.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "finance", "active": true },
+        { "name": "Cointelegraph BR", "url": "https://br.cointelegraph.com/rss", "region": "Global", "language": "pt-BR", "reliability": 0.9, "type": "finance", "active": true },
+        { "name": "CryptoSlate", "url": "https://cryptoslate.com/feed/", "region": "Global", "language": "en", "reliability": 0.92, "type": "finance", "active": true }
+      ]
+    },
 
-  "binance": [
-    "https://www.binance.com/en/blog/feed",
-    "https://www.binance.com/pt-BR/blog/feed"
-  ],
+    "binance": {
+      "description": "Notícias institucionais da Binance",
+      "priority": 1,
+      "sources": [
+        { "name": "Binance Blog EN", "url": "https://www.binance.com/en/blog/feed", "region": "Global", "language": "en", "reliability": 0.95, "type": "institutional", "active": true },
+        { "name": "Binance Blog PT", "url": "https://www.binance.com/pt-BR/blog/feed", "region": "BR", "language": "pt-BR", "reliability": 0.95, "type": "institutional", "active": true }
+      ]
+    },
 
-  "economia": [
-    "https://g1.globo.com/rss/g1/economia/",
-    "https://www.cnnbrasil.com.br/economia/feed/",
-    "https://br.investing.com/rss/news_1.rss",
-    "https://www.infomoney.com.br/feed/",
-    "https://valor.globo.com/rss/valor.xml"
-  ],
+    "economia": {
+      "description": "Economia e finanças",
+      "priority": 1,
+      "sources": [
+        { "name": "G1 Economia", "url": "https://g1.globo.com/rss/g1/economia/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "finance", "active": true },
+        { "name": "CNN Economia", "url": "https://www.cnnbrasil.com.br/economia/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "finance", "active": true },
+        { "name": "Investing BR", "url": "https://br.investing.com/rss/news_1.rss", "region": "Global", "language": "pt-BR", "reliability": 0.9, "type": "finance", "active": true },
+        { "name": "InfoMoney", "url": "https://www.infomoney.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.92, "type": "finance", "active": true },
+        { "name": "Valor Econômico", "url": "https://valor.globo.com/rss/valor.xml", "region": "BR", "language": "pt-BR", "reliability": 0.95, "type": "finance", "active": true }
+      ]
+    },
 
-  "empreendedorismo": [
-    "https://revistapegn.globo.com/rss/pegn/",
-    "https://exame.com/feed/",
-    "https://startupi.com.br/feed/",
-    "https://www.sebrae.com.br/sites/PortalSebrae/rss"
-  ],
+    "empreendedorismo": {
+      "description": "Negócios e startups",
+      "priority": 2,
+      "sources": [
+        { "name": "Pequenas Empresas & Grandes Negócios", "url": "https://revistapegn.globo.com/rss/pegn/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "business", "active": true },
+        { "name": "Exame", "url": "https://exame.com/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.92, "type": "business", "active": true },
+        { "name": "Startupi", "url": "https://startupi.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "business", "active": true },
+        { "name": "Sebrae", "url": "https://www.sebrae.com.br/sites/PortalSebrae/rss", "region": "BR", "language": "pt-BR", "reliability": 0.95, "type": "institutional", "active": true }
+      ]
+    },
 
-  "saude": [
-    "https://g1.globo.com/rss/g1/bemestar/",
-    "https://www.uol.com.br/vivabem/rss.xml",
-    "https://saude.abril.com.br/feed/"
-  ],
+    "saude": {
+      "description": "Saúde e bem-estar",
+      "priority": 2,
+      "sources": [
+        { "name": "G1 Bem Estar", "url": "https://g1.globo.com/rss/g1/bemestar/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "health", "active": true },
+        { "name": "UOL VivaBem", "url": "https://www.uol.com.br/vivabem/rss.xml", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "health", "active": true },
+        { "name": "Saúde Abril", "url": "https://saude.abril.com.br/feed/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "health", "active": true }
+      ]
+    },
 
-  "ciencia": [
-    "https://g1.globo.com/rss/g1/ciencia/",
-    "https://www.scientificamerican.com/feed/",
-    "https://www.nature.com/nature.rss"
-  ],
+    "ciencia": {
+      "description": "Ciência e descobertas",
+      "priority": 2,
+      "sources": [
+        { "name": "G1 Ciência", "url": "https://g1.globo.com/rss/g1/ciencia/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "science", "active": true },
+        { "name": "Scientific American", "url": "https://www.scientificamerican.com/feed/", "region": "Global", "language": "en", "reliability": 0.95, "type": "science", "active": true },
+        { "name": "Nature", "url": "https://www.nature.com/nature.rss", "region": "Global", "language": "en", "reliability": 0.98, "type": "science", "active": true }
+      ]
+    },
 
-  "cultura": [
-    "https://g1.globo.com/rss/g1/cultura/",
-    "https://www.uol.com.br/splash/rss.xml",
-    "https://www.rollingstone.com/music/music-news/feed/"
-  ]
+    "cultura": {
+      "description": "Cultura, música e entretenimento",
+      "priority": 3,
+      "sources": [
+        { "name": "G1 Cultura", "url": "https://g1.globo.com/rss/g1/cultura/", "region": "BR", "language": "pt-BR", "reliability": 0.9, "type": "culture", "active": true },
+        { "name": "UOL Splash", "url": "https://www.uol.com.br/splash/rss.xml", "region": "BR", "language": "pt-BR", "reliability": 0.88, "type": "culture", "active": true },
+        { "name": "Rolling Stone", "url": "https://www.rollingstone.com/music/music-news/feed/", "region": "Global", "language": "en", "reliability": 0.92, "type": "culture", "active": true }
+      ]
+    }
+  }
 }

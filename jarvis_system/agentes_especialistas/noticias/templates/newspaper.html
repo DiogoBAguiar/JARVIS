@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. Chronicle</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --bg-paper: #fdfbf7;
+            --ink-black: #1a1a1a;
+            --accent-red: #8a1c1c;
+            --font-head: 'Playfair Display', serif;
+            --font-body: 'Lora', serif;
+            --font-title: 'Cinzel', serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #fff;
+            font-family: 'Lora', serif;
+            color: #1a1a1a;
+            padding: 0;
+            margin: 0;
+        }
+
+        .newspaper-container {
+            width: 100%;
+            background-color: #fdfbf7;
+            padding: 20px;
+        }
+
+        /* --- CABEÇALHO --- */
+        header {
+            text-align: center;
+            border-bottom: 3px double #1a1a1a;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .meta-header {
+            width: 100%;
+            border-bottom: 1px solid #1a1a1a;
+            margin-bottom: 5px;
+            padding: 2px 0;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10px;
+            overflow: hidden; 
+        }
+        
+        .meta-left { float: left; }
+        .meta-right { float: right; }
+        .meta-center { display: inline-block; }
+
+        h1.brand {
+            font-family: 'Cinzel', serif;
+            font-size: 48px;
+            font-weight: 900;
+            line-height: 1;
+            margin: 10px 0;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            color: #1a1a1a;
+        }
+
+        .motto {
+            font-style: italic;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .price-weather {
+            border-top: 1px solid #1a1a1a;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 5px 0;
+            font-weight: bold;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        /* --- MANCHETE --- */
+        .main-headline {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 15px;
+        }
+
+        .main-headline h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            text-transform: uppercase;
+            font-weight: 900;
+            line-height: 1.1;
+            margin: 0;
+        }
+
+        .main-headline .subhead {
+            font-size: 16px;
+            font-style: italic;
+            font-family: 'Playfair Display', serif;
+            margin-top: 5px;
+        }
+
+        /* --- LAYOUT DE COLUNAS --- */
+        .grid-layout {
+            display: table;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 15px 0;
+            margin-top: 15px;
+        }
+
+        .sidebar-left, .center-story, .sidebar-right {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .sidebar-left {
+            width: 22%;
+            border-right: 1px solid #ddd;
+            padding-right: 10px;
+        }
+
+        .center-story {
+            width: 53%;
+            padding: 0 10px;
+        }
+
+        .sidebar-right {
+            width: 25%;
+            border-left: 1px solid #ddd;
+            padding-left: 10px;
+        }
+
+        /* --- ESTILOS DE TEXTO --- */
+        article h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 14px;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            color: #1a1a1a;
+        }
+
+        article p {
+            text-align: justify;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+
+        .drop-cap::first-letter {
+            float: left;
+            font-family: 'Cinzel', serif;
+            font-size: 40px;
+            line-height: 0.8;
+            padding-right: 5px;
+            padding-top: 2px;
+            color: #8a1c1c;
+        }
+
+        /* --- IMAGENS E GALERIA (NOVO) --- */
+        img {
+            display: block;
+            border: 1px solid #333;
+            object-fit: cover;
+        }
+
+        figcaption {
+            font-size: 10px;
+            font-style: italic;
+            text-align: center;
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        /* Estilo da Galeria (Grid seguro para PDF) */
+        .gallery-container {
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #1a1a1a;
+            padding-bottom: 10px;
+        }
+
+        .gallery-item {
+            float: left;
+            width: 48%; /* 2 colunas */
+            margin-right: 2%;
+            margin-bottom: 10px;
+        }
+        
+        .gallery-item:nth-child(even) {
+            margin-right: 0;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 120px; /* Altura fixa para alinhar */
+        }
+
+        .gallery-caption {
+            font-size: 9px;
+            font-weight: bold;
+            margin-top: 3px;
+            line-height: 1.1;
+            text-align: left;
+        }
+
+        /* Estilo para Imagem Única (Destaque) */
+        .single-featured img {
+            width: 100%;
+            height: auto;
+            max-height: 220px;
+        }
+
+        /* --- RODAPÉ E LINKS --- */
+        .source-item {
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 5px;
+        }
+        .source-link { text-decoration: none; color: #1a1a1a; display: block; }
+        .source-link strong { font-size: 11px; display: block; }
+        .source-link span { font-size: 10px; display: block; }
+
+        footer {
+            margin-top: 30px;
+            border-top: 2px double #1a1a1a;
+            text-align: center;
+            padding-top: 5px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        .btn-subscribe {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 4px 10px;
+            background-color: #1a1a1a;
+            color: white;
+            text-decoration: none;
+            font-size: 10px;
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="newspaper-container">
+        <header>
+            <div class="meta-header">
+                <span class="meta-left">EDIÇÃO ESPECIAL</span>
+                <span class="meta-center">JOÃO PESSOA, PB - {{ data_hoje }}</span>
+                <span class="meta-right">VOL. I</span>
+            </div>
+            <div style="clear: both;"></div>
+            <h1 class="brand">THE J.A.R.V.I.S. CHRONICLE</h1>
+            <p class="motto">"Compilando a verdade, linha por linha"</p>
+            <div class="price-weather">
+                {{ dia_semana }} &nbsp;&bull;&nbsp; JOÃO PESSOA &nbsp;&bull;&nbsp; BRIEFING INTELIGENTE
+            </div>
+        </header>
+
+        <section class="main-headline">
+            <h2>{{ topico|upper }}</h2>
+            <p class="subhead">Relatório Gerado por Agente Autônomo</p>
+        </section>
+
+        <div class="grid-layout">
+            
+            <div class="sidebar-left">
+                <article class="sidebar-story">
+                    <h3>FONTES VERIFICADAS</h3>
+                    {% for dado in dados[:6] %}
+                        <div class="source-item">
+                            <a href="{{ dado.link }}" class="source-link">
+                                <strong>{{ dado.fonte }}</strong>
+                                <span>{{ dado.titulo[:50] }}...</span>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </article>
+
+                <article class="sidebar-story">
+                    <h3>METADADOS</h3>
+                    <p style="font-size: 10px;"><strong>Fontes:</strong> {{ dados|length }}</p>
+                    <p style="font-size: 10px;"><strong>Complexidade:</strong> Alta</p>
+                    <p style="font-size: 10px;"><strong>Agente:</strong> Neural-Hybrid v3.0</p>
+                </article>
+            </div>
+
+            <div class="center-story">
+                
+                {% if galeria_imagens and galeria_imagens|length > 1 %}
+                    <div class="gallery-container">
+                        {% for item in galeria_imagens[:4] %}
+                        <div class="gallery-item">
+                            <img src="{{ item.url }}" alt="Notícia">
+                            <div class="gallery-caption">{{ item.titulo[:40] }}...</div>
+                        </div>
+                        {% endfor %}
+                        <div style="clear: both;"></div>
+                    </div>
+                
+                {% elif imagem_destaque %}
+                    <div class="single-featured" style="margin-bottom: 15px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px;">
+                        <img src="{{ imagem_destaque }}" alt="Imagem do tema" style="filter: grayscale(100%) contrast(120%);">
+                        <figcaption>Imagem Ilustrativa / Fonte: Web</figcaption>
+                    </div>
+                {% endif %}
+
+                <article>
+                    <div class="article-content">
+                        {{ conteudo_html | safe }}
+                    </div>
+                </article>
+            </div>
+
+            <div class="sidebar-right">
+                <article class="sidebar-story">
+                    <h3>Contexto</h3>
+                    <p style="font-size: 10px;">Este relatório foi gerado automaticamente analisando dados em tempo real da web e feeds RSS selecionados.</p>
+                </article>
+
+                <article class="sidebar-story">
+                    <div style="background-color: #eee; padding: 10px; border: 1px solid #999; margin-top: 15px;">
+                        <h3>Sistema</h3>
+                        <ul style="padding-left: 15px; font-size: 10px;">
+                            <li>Redundância tripla.</li>
+                            <li>Groq, Gemini, Ollama.</li>
+                            <li>HTML5 & CSS3.</li>
+                        </ul>
+                    </div>
+                </article>
+
+                <article class="sidebar-story" style="margin-top: 15px;">
+                    <h3>Ponto de Vista</h3>
+                    <p style="font-size: 10px;"><em>"IA é copiloto, não piloto. O engenheiro ainda define o destino."</em></p>
+                </article>
+            </div>
+
+        </div>
+
+        <footer>
+            <p>&copy; 2026 J.A.R.V.I.S. AI SYSTEM - IFPB CAMPUS JOÃO PESSOA.</p>
+            <p>LAYOUT OTIMIZADO PARA A4 - GERADO AUTOMATICAMENTE.</p>
+        </footer>
+    </div>
+
+</body>
+</html>

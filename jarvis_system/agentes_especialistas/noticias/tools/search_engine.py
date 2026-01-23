@@ -1,115 +1,164 @@
-import logging
-import feedparser
 import json
 import os
+import logging
+import feedparser
+from datetime import datetime
 from duckduckgo_search import DDGS
 
 logger = logging.getLogger("NEWS_ENGINE")
 
 class NewsEngine:
     def __init__(self):
+        # Define o caminho do arquivo sources.json
+        self.sources_file = os.path.join(os.path.dirname(__file__), "sources.json")
+        self.config = self._load_sources()
         self.ddgs = DDGS()
-        self.rss_sources = self._carregar_fontes()
 
-    def _carregar_fontes(self):
-        """Carrega as fontes RSS do arquivo JSON externo."""
+    def _load_sources(self):
+        """Carrega e valida o arquivo sources.json."""
         try:
-            # Obtém o caminho absoluto do diretório onde este arquivo .py está
-            base_path = os.path.dirname(os.path.abspath(__file__))
-            json_path = os.path.join(base_path, "sources.json")
+            if not os.path.exists(self.sources_file):
+                logger.warning(f"⚠️ Arquivo sources.json não encontrado em: {self.sources_file}")
+                return {}
             
-            if not os.path.exists(json_path):
-                logger.warning(f"⚠️ Arquivo sources.json não encontrado em: {json_path}")
-                return {} 
-
-            with open(json_path, 'r', encoding='utf-8') as f:
-                sources = json.load(f)
-                logger.info(f"✅ Mapa de fontes carregado: {len(sources)} categorias.")
-                return sources
+            with open(self.sources_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                logger.info(f"✅ Configurações de fontes carregadas (v{config.get('version', '1.0')})")
+                return config
         except Exception as e:
-            logger.error(f"❌ Erro ao carregar sources.json: {e}")
+            logger.error(f"❌ Erro ao ler sources.json: {e}")
             return {}
 
-    def get_briefing(self, categoria="geral", limit=6):
+    def get_sources_by_category(self, category_name):
         """
-        Modo Passivo Multi-Fonte:
-        Percorre a lista de fontes da categoria, pega um pouco de cada e mistura.
+        Navega na estrutura hierárquica do JSON para encontrar as fontes.
+        Ex: 'futebol' -> Retorna lista de fontes do GE, Lance, UOL.
         """
-        # Garante que urls seja sempre uma lista
-        urls = self.rss_sources.get(categoria, self.rss_sources.get("geral", []))
-        
-        if isinstance(urls, str): urls = [urls]
-        if not urls:
-            logger.warning(f"⚠️ Nenhuma fonte definida para categoria: {categoria}")
+        if not self.config or "categories" not in self.config:
             return []
+
+        # Normaliza a busca (converte para minúsculo)
+        cat_data = self.config["categories"].get(category_name.lower())
         
-        logger.info(f"📡 Iniciando Varredura Multi-Fonte para: {categoria} ({len(urls)} fontes)")
+        # Se não achar a categoria específica, tenta 'geral' como fallback
+        if not cat_data and category_name != 'geral':
+            logger.warning(f"⚠️ Categoria '{category_name}' não encontrada. Usando 'geral'.")
+            cat_data = self.config["categories"].get("geral")
+
+        if cat_data:
+            return cat_data.get("sources", [])
         
-        todas_noticias = []
-        limit_per_source = 2 
-        
-        for url in urls:
-            try:
-                feed = feedparser.parse(url)
-                if not feed.entries:
-                    continue 
+        return []
 
-                fonte_nome = feed.feed.get("title", "Fonte Externa")
-                fonte_limpa = fonte_nome.replace("G1 > ", "").replace(" - Últimas notícias", "")
-
-                for entry in feed.entries[:limit_per_source]:
-                    todas_noticias.append({
-                        "titulo": entry.title,
-                        "link": entry.link,
-                        "publicado_em": entry.get("published", "Recente"),
-                        "fonte": fonte_limpa,
-                        "image": self._extrair_imagem_rss(entry)
-                    })
-            except Exception as e:
-                logger.warning(f"⚠️ Falha ao ler fonte {url}: {e}")
-                continue
-
-        return todas_noticias[:limit]
-
-    def _extrair_imagem_rss(self, entry):
-        """Tenta encontrar imagem dentro da entrada RSS."""
+    def _extract_image(self, entry):
+        """
+        Tenta encontrar a melhor imagem possível no RSS.
+        Crucial para o visual do Jornal PDF.
+        """
         try:
-            if 'media_content' in entry:
-                return entry.media_content[0]['url']
-            if 'media_thumbnail' in entry:
+            # 1. Media Content (Padrão Yahoo/G1)
+            if "media_content" in entry:
+                media = entry.media_content[0]
+                if 'url' in media: return media['url']
+            
+            # 2. Media Thumbnail
+            if "media_thumbnail" in entry:
                 return entry.media_thumbnail[0]['url']
-            if 'links' in entry:
+            
+            # 3. Links com type image
+            if "links" in entry:
                 for link in entry.links:
-                    if 'image' in link.type:
+                    if "image" in str(link.type):
                         return link.href
-        except:
+            
+            # 4. Enclosures (Podcasts/Imagens antigas)
+            if "enclosures" in entry:
+                for enc in entry.enclosures:
+                    if "image" in str(enc.type):
+                        return enc.href
+                        
+        except Exception:
             pass
         return None
 
-    def search_topic(self, query, limit=3):
-        """Modo Ativo: Pesquisa Web (Com proteção contra Ratelimit)."""
+    def search_topic(self, query, limit=5):
+        """
+        Modo Ativo: Pesquisa Web (DuckDuckGo).
+        Usado quando o RSS não é suficiente ou para assuntos específicos.
+        """
         logger.info(f"🌍 Pesquisando na Web: '{query}'...")
+        results = []
         try:
-            results = self.ddgs.news(keywords=query, region="br-pt", safesearch="off", max_results=limit)
+            # max_results controla quantos links o DDG retorna
+            ddg_news = self.ddgs.news(keywords=query, region="br-pt", safesearch="off", max_results=limit)
             
-            # Se results for None (algumas versões do DDGS fazem isso no erro), retorna vazio
-            if not results:
-                return []
-
-            clean_results = []
-            for r in results:
-                clean_results.append({
-                    "titulo": r.get('title'),
-                    "resumo": r.get('body'), 
-                    "link": r.get('url'),
-                    "fonte": r.get('source'),
-                    "data": r.get('date'),
-                    "image": r.get('image')
-                })
-            return clean_results
-
+            if ddg_news:
+                for item in ddg_news:
+                    results.append({
+                        "titulo": item.get('title'),
+                        "link": item.get('url'),
+                        "fonte": item.get('source', 'Web Search'),
+                        "publicado_em": item.get('date', datetime.now().isoformat()),
+                        "image": item.get('image', None),
+                        "resumo": item.get('body', ''),
+                        "reliability": 0.5 # Web Search tem confiabilidade padrão média
+                    })
+            
         except Exception as e:
-            # Captura Ratelimit (HTTP 202/429) e outros erros de rede
             logger.error(f"⚠️ Erro na Busca Web (DuckDuckGo): {e}")
-            # Retorna lista vazia para que o sistema continue usando Mock ou RSS
+        
+        return results
+
+    def get_briefing(self, categoria="geral", limit=3):
+        """
+        Busca notícias via RSS das fontes configuradas no novo JSON.
+        """
+        sources = self.get_sources_by_category(categoria)
+        if not sources:
+            logger.warning(f"⚠️ Nenhuma fonte configurada para: {categoria}")
             return []
+
+        all_news = []
+        
+        # Pega a política de atualização do JSON ou usa padrão
+        policy_limit = self.config.get("update_policy", {}).get("max_articles_per_source", 5)
+        # Se o limit passado for menor que a política, usa a política para ter variedade
+        limit_per_source = policy_limit
+
+        logger.info(f"📡 Varrendo {len(sources)} fontes de '{categoria}'...")
+
+        for source in sources:
+            # Pula fontes inativas no JSON
+            if not source.get("active", True): 
+                continue
+
+            try:
+                # Parse do RSS
+                feed = feedparser.parse(source["url"])
+                
+                if not feed.entries:
+                    continue
+
+                # Pega os artigos
+                count = 0
+                for entry in feed.entries:
+                    if count >= limit_per_source: break
+                    
+                    news_item = {
+                        "titulo": entry.title,
+                        "link": entry.link,
+                        # Usa o nome bonito do JSON (ex: "G1 Tecnologia") em vez do título do feed
+                        "fonte": source["name"],
+                        "publicado_em": entry.get("published", datetime.now().isoformat()),
+                        "image": self._extract_image(entry),
+                        "resumo": entry.get("summary", "")[:300] + "...", # Limita resumo para não estourar prompt
+                        "reliability": source.get("reliability", 0.7) # Passa a confiabilidade do JSON
+                    }
+                    all_news.append(news_item)
+                    count += 1
+                    
+            except Exception as e:
+                logger.debug(f"Falha ao ler {source.get('name')}: {e}")
+
+        # Retorna todas as notícias encontradas (o cérebro filtra depois se precisar)
+        return all_news
