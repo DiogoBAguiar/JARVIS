@@ -1,0 +1,123 @@
+{
+  "geral": [
+    "https://g1.globo.com/rss/g1/",
+    "https://www.cnnbrasil.com.br/feed/",
+    "https://noticias.uol.com.br/rss.xml",
+    "https://www.estadao.com.br/rss/ultimas.xml",
+    "https://www.folha.uol.com.br/rss/ultimosegundo.xml",
+    "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml"
+  ],
+
+  "paraiba": [
+    "https://g1.globo.com/rss/g1/pb/paraiba/",
+    "https://jornaldaparaiba.com.br/feed",
+    "https://portalcorreio.com.br/feed/",
+    "https://wscom.com.br/feed/",
+    "https://www.clickpb.com.br/feed/"
+  ],
+
+  "politica": [
+    "https://www.conexaopolitica.com.br/feed/",
+    "https://www.cnnbrasil.com.br/politica/feed/",
+    "https://g1.globo.com/rss/g1/politica/",
+    "https://www.poder360.com.br/rss/",
+    "https://www.estadao.com.br/politica/rss.xml",
+    "https://www.cartacapital.com.br/feed/"
+  ],
+
+  "esporte": [
+    "https://ge.globo.com/rss/ge/",
+    "https://www.espn.com.br/espn/rss/news",
+    "https://www.lance.com.br/rss",
+    "https://www.terra.com.br/rss/esportes.xml"
+  ],
+
+  "futebol": [
+    "https://ge.globo.com/rss/ge/futebol/",
+    "https://www.espn.com.br/espn/rss/news",
+    "https://www.lance.com.br/rss/futebol",
+    "https://www.uol.com.br/esporte/futebol/rss.xml"
+  ],
+
+  "esporte-eletronico": [
+    "https://einerd.com.br/categoria/esports/feed/",
+    "https://www.hltv.org/rss/news",
+    "https://www.vlr.gg/rss",
+    "https://maisesports.com.br/feed/",
+    "https://draft5.gg/feed",
+    "https://valorantzone.gg/feed/"
+  ],
+
+  "nerd": [
+    "https://einerd.com.br/feed/",
+    "https://jovemnerd.com.br/feed/",
+    "https://omelete.com.br/feed/",
+    "https://nerdcast.com.br/feed/"
+  ],
+
+  "otaku": [
+    "https://einerd.com.br/categoria/otaku/feed/",
+    "https://www.crunchyroll.com/newsfeed/rss",
+    "https://www.animeunited.com.br/feed/"
+  ],
+
+  "games": [
+    "https://einerd.com.br/categoria/games/feed/",
+    "https://br.ign.com/feed.xml",
+    "https://www.adrenaline.com.br/feed/",
+    "https://www.tecmundo.com.br/rss"
+  ],
+
+  "tecnologia": [
+    "https://g1.globo.com/rss/g1/tecnologia/",
+    "https://canaltech.com.br/rss/",
+    "https://olhardigital.com.br/rss",
+    "https://www.tecmundo.com.br/rss",
+    "https://www.wired.com/feed/rss"
+  ],
+
+  "crypto": [
+    "https://portaldobitcoin.uol.com.br/feed/",
+    "https://livecoins.com.br/feed/",
+    "https://br.cointelegraph.com/rss",
+    "https://cryptoslate.com/feed/"
+  ],
+
+  "binance": [
+    "https://www.binance.com/en/blog/feed",
+    "https://www.binance.com/pt-BR/blog/feed"
+  ],
+
+  "economia": [
+    "https://g1.globo.com/rss/g1/economia/",
+    "https://www.cnnbrasil.com.br/economia/feed/",
+    "https://br.investing.com/rss/news_1.rss",
+    "https://www.infomoney.com.br/feed/",
+    "https://valor.globo.com/rss/valor.xml"
+  ],
+
+  "empreendedorismo": [
+    "https://revistapegn.globo.com/rss/pegn/",
+    "https://exame.com/feed/",
+    "https://startupi.com.br/feed/",
+    "https://www.sebrae.com.br/sites/PortalSebrae/rss"
+  ],
+
+  "saude": [
+    "https://g1.globo.com/rss/g1/bemestar/",
+    "https://www.uol.com.br/vivabem/rss.xml",
+    "https://saude.abril.com.br/feed/"
+  ],
+
+  "ciencia": [
+    "https://g1.globo.com/rss/g1/ciencia/",
+    "https://www.scientificamerican.com/feed/",
+    "https://www.nature.com/nature.rss"
+  ],
+
+  "cultura": [
+    "https://g1.globo.com/rss/g1/cultura/",
+    "https://www.uol.com.br/splash/rss.xml",
+    "https://www.rollingstone.com/music/music-news/feed/"
+  ]
+}

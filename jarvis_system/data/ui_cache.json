@@ -2,7 +2,7 @@
     "spotify": {
         "1160x680": {
             "filter_btn_artista": {
-                "x": 289,
+                "x": 373,
                 "y": 95
             },
             "filter_btn_m\u00fasica": {
@@ -54,7 +54,7 @@
                 "y": 382
             },
             "filter_btn_artista_alt": {
-                "x": 373,
+                "x": 289,
                 "y": 95
             },
             "play_btn_pos_metallica": {
@@ -84,6 +84,10 @@
             "play_btn_pos_playlist_playlist_foco": {
                 "x": 136,
                 "y": 333
+            },
+            "playlist_pos_foco": {
+                "x": 220,
+                "y": 181
             }
         }
     }
