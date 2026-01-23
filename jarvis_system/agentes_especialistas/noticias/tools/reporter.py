@@ -3,7 +3,7 @@ import logging
 import pdfkit
 import markdown
 import re
-import requests # Necessário para baixar a imagem
+import requests
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
@@ -33,7 +33,7 @@ class NewsReporter:
         # 2. Configurar Jinja2
         base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
         self.template_dir = os.path.join(base_path, "templates")
-        self.img_cache_dir = os.path.join(base_path, "temp_images") # Pasta para imagens temporárias
+        self.img_cache_dir = os.path.join(base_path, "temp_images")
         
         if not os.path.exists(self.img_cache_dir): os.makedirs(self.img_cache_dir)
         
@@ -46,14 +46,14 @@ class NewsReporter:
         if not os.path.exists(self.output_folder): os.makedirs(self.output_folder)
 
     def _download_image(self, url):
-        """Baixa a imagem da web para uma pasta local."""
+        """Baixa a imagem da web para cache local."""
         if not url: return None
         try:
             filename = f"img_{abs(hash(url))}.jpg"
             filepath = os.path.join(self.img_cache_dir, filename)
             
-            # Se já baixou, retorna caminho formatado
-            if os.path.exists(filepath): return self._format_path(filepath)
+            if os.path.exists(filepath):
+                return self._format_path(filepath)
 
             headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(url, headers=headers, timeout=5)
@@ -89,62 +89,66 @@ class NewsReporter:
             imagem_destaque = None
             galeria_imagens = []
 
-            # --- LÓGICA HÍBRIDA: GALERIA vs DESTAQUE ÚNICO ---
+            # --- LÓGICA HÍBRIDA DE IMAGENS (CORRIGIDA) ---
             
-            # 1. Detecta se é um tópico geral (ex: "Notícias do dia", "Resumo Geral")
+            # 1. Detecta se é um tópico geral (Modo Galeria)
             termos_gerais = ["notícias", "resumo", "briefing", "geral", "hoje", "dia", "manchetes", "principais"]
             eh_topico_geral = any(t in topico.lower() for t in termos_gerais) and len(topico.split()) < 6
 
             if eh_topico_geral:
-                logger.info("📸 Modo Galeria ativado (Tópico Geral). Coletando imagens das notícias...")
-                # Coleta até 4 imagens das notícias reais
+                logger.info("📸 Modo Galeria ativado. Coletando imagens diversas...")
                 for item in dados_brutos:
                     if len(galeria_imagens) >= 4: break
-                    
                     url_img = item.get('image')
                     if url_img:
                         caminho_local = self._download_image(url_img)
                         if caminho_local:
-                            galeria_imagens.append({
-                                "url": caminho_local,
-                                "titulo": item.get('titulo', 'Notícia')
-                            })
+                            galeria_imagens.append({"url": caminho_local, "titulo": item.get('titulo', 'Notícia')})
                 
-                # Se não achou imagens suficientes (min 2), desiste da galeria e tenta destaque único
-                if len(galeria_imagens) < 2:
-                    eh_topico_geral = False
-                    galeria_imagens = []
+                if len(galeria_imagens) < 2: eh_topico_geral = False
 
             # 2. Modo Destaque Único (Se não for galeria)
-            if not galeria_imagens:
-                imagens_tematicas = {
-                    "cripto": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
-                    "bitcoin": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
-                    "futebol": "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=1000&auto=format&fit=crop",
-                    "esporte": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop",
-                    "política": "https://images.unsplash.com/photo-1529101091760-61df6be5f18b?q=80&w=1000&auto=format&fit=crop",
-                    "binance": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=1000&auto=format&fit=crop",
-                    "dólar": "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=1000&auto=format&fit=crop",
-                    "games": "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=1000&auto=format&fit=crop",
-                    "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop"
-                }
-
+            if not eh_topico_geral:
                 url_escolhida = None
-                # Prioridade: Temática
-                for chave, url in imagens_tematicas.items():
-                    if chave in topico.lower():
-                        url_escolhida = url
-                        logger.info(f"🖼️ Usando imagem temática para: {chave}")
+                
+                # A) Prioridade 1: Notícia REAL que tenha a ver com o Tópico (Filtro de Relevância)
+                termos_topico = [t for t in topico.lower().split() if len(t) > 3] # Ignora 'de', 'do', 'o'
+                
+                for item in dados_brutos:
+                    titulo_news = item.get('titulo', '').lower()
+                    url_img = item.get('image')
+                    
+                    # Verifica se o título da notícia contém palavras do tópico (Ex: 'Bitcoin' no título)
+                    if url_img and any(termo in titulo_news for termo in termos_topico):
+                        url_escolhida = url_img
+                        logger.info(f"📸 Imagem RELEVANTE encontrada na notícia: '{item.get('titulo')}'")
                         break
                 
-                # Fallback: RSS
+                # B) Prioridade 2: Imagem Temática HD (Se não achou notícia relevante com foto)
+                if not url_escolhida:
+                    imagens_tematicas = {
+                        "cripto": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
+                        "bitcoin": "https://images.unsplash.com/photo-1518546305927-5a555bb7020d?q=80&w=1000&auto=format&fit=crop",
+                        "futebol": "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=1000&auto=format&fit=crop",
+                        "esporte": "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1000&auto=format&fit=crop",
+                        "política": "https://images.unsplash.com/photo-1529101091760-61df6be5f18b?q=80&w=1000&auto=format&fit=crop",
+                        "binance": "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?q=80&w=1000&auto=format&fit=crop",
+                        "dólar": "https://images.unsplash.com/photo-1580519542036-c47de6196ba5?q=80&w=1000&auto=format&fit=crop",
+                        "games": "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?q=80&w=1000&auto=format&fit=crop",
+                        "tech": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1000&auto=format&fit=crop"
+                    }
+                    for chave, url in imagens_tematicas.items():
+                        if chave in topico.lower():
+                            url_escolhida = url
+                            logger.info(f"🖼️ Usando imagem temática (Fallback) para: {chave}")
+                            break
+
+                # C) Prioridade 3: Qualquer imagem do RSS (Se não tem temática nem relevante)
                 if not url_escolhida:
                     url_escolhida = next((item.get('image') for item in dados_brutos if item.get('image')), None)
 
-                # Baixa a imagem
-                caminho = self._download_image(url_escolhida)
-                if caminho:
-                    imagem_destaque = caminho
+                # Baixa e define
+                imagem_destaque = self._download_image(url_escolhida)
 
             # 3. Renderizar Template
             if not self.env: raise Exception("Ambiente Jinja2 falhou")
@@ -157,7 +161,7 @@ class NewsReporter:
                 data_hoje=data_hoje,
                 dia_semana=dia_semana,
                 imagem_destaque=imagem_destaque,
-                galeria_imagens=galeria_imagens # Passa a lista para o template
+                galeria_imagens=galeria_imagens
             )
 
             # 4. Configurações do PDF

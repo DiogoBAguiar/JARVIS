@@ -3,7 +3,7 @@
   "default_language": "pt-BR",
   "update_policy": {
     "refresh_minutes": 30,
-    "max_articles_per_source": 15
+    "max_articles_per_source": 5
   },
   "categories": {
     "geral": {
