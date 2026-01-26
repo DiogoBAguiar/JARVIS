@@ -1,359 +1,314 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. Chronicle</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:ital,wght@0,400;0,700;1,400&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ topico }} - The J.A.R.V.I.S. Chronicle</title>
+  <link href="https://fonts.googleapis.com/css2?family=Chomsky&family=Cinzel:wght@400;700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
 
-        :root {
-            --bg-paper: #fdfbf7;
-            --ink-black: #1a1a1a;
-            --accent-red: #8a1c1c;
-            --font-head: 'Playfair Display', serif;
-            --font-body: 'Lora', serif;
-            --font-title: 'Cinzel', serif;
-        }
+  <style>
+    /* --- CONFIGURAÇÕES VISUAIS PREMIUM --- */
+    :root {
+      --bg-paper: #f4f1ea; /* Creme envelhecido */
+      --ink-black: #1a1a1a;
+      --accent-red: #8a1c1c;
+      
+      /* DIMENSÕES A4 */
+      --page-width: 210mm;
+      --page-height: 297mm;
+      
+      --margin-top: 15mm;
+      --margin-side: 18mm; 
+      --margin-bottom: 12mm; 
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+      --footer-height: 8mm; 
+    }
 
-        body {
-            background-color: #fff;
-            font-family: 'Lora', serif;
-            color: #1a1a1a;
-            padding: 0;
-            margin: 0;
-        }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .newspaper-container {
-            width: 100%;
-            background-color: #fdfbf7;
-            padding: 20px;
-        }
+    body {
+      background: #2e2e2e; /* Mesa escura */
+      font-family: 'Lora', serif;
+      color: var(--ink-black);
+      padding: 40px;
+      -webkit-font-smoothing: antialiased;
+    }
 
-        /* --- CABEÇALHO --- */
-        header {
-            text-align: center;
-            border-bottom: 3px double #1a1a1a;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
+    /* --- PÁGINA COM TEXTURA --- */
+    .page {
+      width: var(--page-width);
+      height: var(--page-height);
+      background-color: var(--bg-paper);
+      /* Textura de papel via SVG */
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+      margin: 0 auto 40px auto;
+      position: relative;
+      box-shadow: 
+        0 1px 1px rgba(0,0,0,0.15), 
+        0 10px 0 -5px #eee, 
+        0 30px 30px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      padding: var(--margin-top) var(--margin-side) var(--margin-bottom) var(--margin-side);
+      border: 1px solid #d3cfc6;
+    }
 
-        .meta-header {
-            width: 100%;
-            border-bottom: 1px solid #1a1a1a;
-            margin-bottom: 5px;
-            padding: 2px 0;
-            font-family: 'Playfair Display', serif;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 10px;
-            overflow: hidden; 
-        }
-        
-        .meta-left { float: left; }
-        .meta-right { float: right; }
-        .meta-center { display: inline-block; }
+    .content-area {
+      width: 100%;
+      height: calc(100% - var(--footer-height)); 
+      overflow: hidden; 
+      display: flex;
+      flex-direction: column;
+    }
 
-        h1.brand {
-            font-family: 'Cinzel', serif;
-            font-size: 48px;
-            font-weight: 900;
-            line-height: 1;
-            margin: 10px 0;
-            text-transform: uppercase;
-            letter-spacing: -1px;
-            color: #1a1a1a;
-        }
+    /* --- RODAPÉ --- */
+    .page-footer {
+      height: var(--footer-height);
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--ink-black);
+      border-bottom: 1px solid var(--ink-black);
+      margin-top: auto; 
+      padding-top: 2px;
+      font-family: 'Cinzel', serif;
+      font-size: 7pt;
+      letter-spacing: 1px;
+      font-weight: 700;
+      color: #444;
+    }
 
-        .motto {
-            font-style: italic;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
+    #source-content { display: none; }
 
-        .price-weather {
-            border-top: 1px solid #1a1a1a;
-            border-bottom: 1px solid #1a1a1a;
-            padding: 5px 0;
-            font-weight: bold;
-            font-size: 11px;
-            text-align: center;
-        }
+    /* --- ESTILOS DO JORNAL --- */
+    .header-section { text-align: center; border-bottom: 4px double var(--ink-black); padding-bottom: 15px; margin-bottom: 25px; flex-shrink: 0; }
+    
+    .meta-header { display: flex; justify-content: space-between; font-family: sans-serif; font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid var(--ink-black); padding-bottom: 6px; margin-bottom: 12px; color: #555; }
+    
+    .main-title { font-family: 'Cinzel', serif; font-size: 46pt; font-weight: 900; letter-spacing: -1px; margin: 10px 0 5px 0; line-height: 0.9; text-transform: uppercase; text-shadow: 1px 1px 0px rgba(0,0,0,0.1); }
+    
+    .motto { font-family: 'Playfair Display', serif; font-style: italic; font-size: 11pt; margin-bottom: 15px; color: #444; }
+    
+    .info-bar { border-top: 1px solid var(--ink-black); border-bottom: 1px solid var(--ink-black); padding: 6px; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; background-color: rgba(0,0,0,0.03); }
+    
+    .headline-section { text-align: center; margin-bottom: 35px; flex-shrink: 0; }
+    .headline-section h2 { font-family: 'Playfair Display', serif; font-size: 32pt; font-weight: 900; text-transform: uppercase; line-height: 1; margin-bottom: 10px; }
+    .headline-section p { font-family: 'Lora', serif; font-size: 12pt; font-style: italic; color: var(--accent-red); }
+    
+    /* Grid com linhas verticais */
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1px 2.5fr 1px 1fr; gap: 15px; align-content: start; }
+    .vertical-line { background-color: #ccc; width: 1px; height: 100%; }
 
-        /* --- MANCHETE --- */
-        .main-headline {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 15px;
-        }
+    .sidebar h3 { font-family: 'Cinzel', serif; font-size: 9pt; border-bottom: 2px solid var(--ink-black); margin-bottom: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+    .sidebar-item { margin-bottom: 10px; border-bottom: 1px dotted #999; padding-bottom: 6px; font-size: 8.5pt; line-height: 1.3; }
+    .sidebar-item strong { display: block; color: var(--accent-red); font-size: 7.5pt; text-transform: uppercase; }
 
-        .main-headline h2 {
-            font-family: 'Playfair Display', serif;
-            font-size: 32px;
-            text-transform: uppercase;
-            font-weight: 900;
-            line-height: 1.1;
-            margin: 0;
-        }
+    .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .gallery img { width: 100%; height: 90px; object-fit: cover; border: 1px solid #333; filter: grayscale(100%) contrast(120%) sepia(20%); display: block; }
+    .caption { font-family: sans-serif; font-size: 6pt; text-transform: uppercase; margin-top: 3px; text-align: right; color: #666; }
+    
+    .summary-box { border-top: 1px solid var(--ink-black); border-bottom: 1px solid var(--ink-black); padding: 10px 0; font-size: 10.5pt; text-align: justify; font-style: italic; line-height: 1.5; }
 
-        .main-headline .subhead {
-            font-size: 16px;
-            font-style: italic;
-            font-family: 'Playfair Display', serif;
-            margin-top: 5px;
-        }
+    /* --- MIOLO DO TEXTO --- */
+    .text-block { font-family: 'Merriweather', serif; font-size: 10.5pt; line-height: 1.65; text-align: justify; margin-bottom: 18px; color: #222; hyphens: auto; }
+    
+    .text-block h3 { font-family: 'Cinzel', serif; font-size: 14pt; font-weight: 700; color: var(--ink-black); border-bottom: 2px solid var(--accent-red); padding-bottom: 5px; margin: 30px 0 15px 0; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+    
+    .text-block ul { list-style: none; padding: 15px 0; margin: 15px 15px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+    .text-block li { margin-bottom: 6px; padding-left: 20px; position: relative; font-size: 10pt; font-style: italic; color: #444; }
+    .text-block li::before { content: "❧"; position: absolute; left: 0; color: var(--accent-red); font-size: 10pt; }
 
-        /* --- LAYOUT DE COLUNAS --- */
-        .grid-layout {
-            display: table;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 15px 0;
-            margin-top: 15px;
-        }
+    /* Ajustei levemente o line-height para 0.8 para alinhar melhor qualquer letra */
+    .drop-cap { float: left; font-family: 'Cinzel', serif; font-size: 55pt; line-height: 0.8; padding-right: 12px; padding-top: 2px; color: var(--ink-black); text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
 
-        .sidebar-left, .center-story, .sidebar-right {
-            display: table-cell;
-            vertical-align: top;
-        }
-
-        .sidebar-left {
-            width: 22%;
-            border-right: 1px solid #ddd;
-            padding-right: 10px;
-        }
-
-        .center-story {
-            width: 53%;
-            padding: 0 10px;
-        }
-
-        .sidebar-right {
-            width: 25%;
-            border-left: 1px solid #ddd;
-            padding-left: 10px;
-        }
-
-        /* --- ESTILOS DE TEXTO --- */
-        article h3 {
-            font-family: 'Playfair Display', serif;
-            font-size: 14px;
-            margin: 10px 0 5px 0;
-            font-weight: bold;
-            border-bottom: 1px solid #ddd;
-            color: #1a1a1a;
-        }
-
-        article p {
-            text-align: justify;
-            font-size: 12px;
-            line-height: 1.4;
-            margin-bottom: 10px;
-        }
-
-        .drop-cap::first-letter {
-            float: left;
-            font-family: 'Cinzel', serif;
-            font-size: 40px;
-            line-height: 0.8;
-            padding-right: 5px;
-            padding-top: 2px;
-            color: #8a1c1c;
-        }
-
-        /* --- IMAGENS E GALERIA (NOVO) --- */
-        img {
-            display: block;
-            border: 1px solid #333;
-            object-fit: cover;
-        }
-
-        figcaption {
-            font-size: 10px;
-            font-style: italic;
-            text-align: center;
-            margin-bottom: 10px;
-            color: #555;
-        }
-
-        /* Estilo da Galeria (Grid seguro para PDF) */
-        .gallery-container {
-            width: 100%;
-            overflow: hidden;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #1a1a1a;
-            padding-bottom: 10px;
-        }
-
-        .gallery-item {
-            float: left;
-            width: 48%; /* 2 colunas */
-            margin-right: 2%;
-            margin-bottom: 10px;
-        }
-        
-        .gallery-item:nth-child(even) {
-            margin-right: 0;
-        }
-
-        .gallery-item img {
-            width: 100%;
-            height: 120px; /* Altura fixa para alinhar */
-        }
-
-        .gallery-caption {
-            font-size: 9px;
-            font-weight: bold;
-            margin-top: 3px;
-            line-height: 1.1;
-            text-align: left;
-        }
-
-        /* Estilo para Imagem Única (Destaque) */
-        .single-featured img {
-            width: 100%;
-            height: auto;
-            max-height: 220px;
-        }
-
-        /* --- RODAPÉ E LINKS --- */
-        .source-item {
-            margin-bottom: 10px;
-            border-bottom: 1px dashed #ccc;
-            padding-bottom: 5px;
-        }
-        .source-link { text-decoration: none; color: #1a1a1a; display: block; }
-        .source-link strong { font-size: 11px; display: block; }
-        .source-link span { font-size: 10px; display: block; }
-
-        footer {
-            margin-top: 30px;
-            border-top: 2px double #1a1a1a;
-            text-align: center;
-            padding-top: 5px;
-            font-size: 9px;
-            font-weight: bold;
-            text-transform: uppercase;
-            width: 100%;
-        }
-
-        .btn-subscribe {
-            display: inline-block;
-            margin-top: 5px;
-            padding: 4px 10px;
-            background-color: #1a1a1a;
-            color: white;
-            text-decoration: none;
-            font-size: 10px;
-            font-family: 'Playfair Display', serif;
-        }
-    </style>
+    @media print {
+      body { background: none; margin: 0; padding: 0; }
+      .page { margin: 0; box-shadow: none; border: none; background: white; break-after: page; page-break-after: always; }
+      @page { size: A4; margin: 0; }
+    }
+  </style>
 </head>
 <body>
 
-    <div class="newspaper-container">
-        <header>
-            <div class="meta-header">
-                <span class="meta-left">EDIÇÃO ESPECIAL</span>
-                <span class="meta-center">JOÃO PESSOA, PB - {{ data_hoje }}</span>
-                <span class="meta-right">VOL. I</span>
-            </div>
-            <div style="clear: both;"></div>
-            <h1 class="brand">THE J.A.R.V.I.S. CHRONICLE</h1>
-            <p class="motto">"Compilando a verdade, linha por linha"</p>
-            <div class="price-weather">
-                {{ dia_semana }} &nbsp;&bull;&nbsp; JOÃO PESSOA &nbsp;&bull;&nbsp; BRIEFING INTELIGENTE
-            </div>
-        </header>
+  <div id="print-container"></div>
 
-        <section class="main-headline">
-            <h2>{{ topico|upper }}</h2>
-            <p class="subhead">Relatório Gerado por Agente Autônomo</p>
-        </section>
+  <div id="source-content">
+    
+    <div id="cover-content">
+      <div class="header-section">
+        <div class="meta-header">
+          <span>Edição Extraordinária</span>
+          <span>JOÃO PESSOA, PB • {{ data_hoje }}</span>
+          <span>Vol. CDXX</span>
+        </div>
+        <h1 class="main-title">The J.A.R.V.I.S. Chronicle</h1>
+        <p class="motto">"Compilando a verdade, linha por linha"</p>
+        <div class="info-bar">{{ dia_semana }} &nbsp; • &nbsp; IFPB Campus JP &nbsp; • &nbsp; Briefing Executivo</div>
+      </div>
 
-        <div class="grid-layout">
-            
-            <div class="sidebar-left">
-                <article class="sidebar-story">
-                    <h3>FONTES VERIFICADAS</h3>
-                    {% for dado in dados[:6] %}
-                        <div class="source-item">
-                            <a href="{{ dado.link }}" class="source-link">
-                                <strong>{{ dado.fonte }}</strong>
-                                <span>{{ dado.titulo[:50] }}...</span>
-                            </a>
-                        </div>
-                    {% endfor %}
-                </article>
+      <div class="headline-section">
+        <h2>{{ topico }}</h2>
+        <p>Relatório de Inteligência & Análise Técnica</p>
+      </div>
 
-                <article class="sidebar-story">
-                    <h3>METADADOS</h3>
-                    <p style="font-size: 10px;"><strong>Fontes:</strong> {{ dados|length }}</p>
-                    <p style="font-size: 10px;"><strong>Complexidade:</strong> Alta</p>
-                    <p style="font-size: 10px;"><strong>Agente:</strong> Neural-Hybrid v3.0</p>
-                </article>
-            </div>
-
-            <div class="center-story">
-                
-                {% if galeria_imagens and galeria_imagens|length > 1 %}
-                    <div class="gallery-container">
-                        {% for item in galeria_imagens[:4] %}
-                        <div class="gallery-item">
-                            <img src="{{ item.url }}" alt="Notícia">
-                            <div class="gallery-caption">{{ item.titulo[:40] }}...</div>
-                        </div>
-                        {% endfor %}
-                        <div style="clear: both;"></div>
-                    </div>
-                
-                {% elif imagem_destaque %}
-                    <div class="single-featured" style="margin-bottom: 15px; border-bottom: 1px solid #1a1a1a; padding-bottom: 5px;">
-                        <img src="{{ imagem_destaque }}" alt="Imagem do tema" style="filter: grayscale(100%) contrast(120%);">
-                        <figcaption>Imagem Ilustrativa / Fonte: Web</figcaption>
-                    </div>
-                {% endif %}
-
-                <article>
-                    <div class="article-content">
-                        {{ conteudo_html | safe }}
-                    </div>
-                </article>
-            </div>
-
-            <div class="sidebar-right">
-                <article class="sidebar-story">
-                    <h3>Contexto</h3>
-                    <p style="font-size: 10px;">Este relatório foi gerado automaticamente analisando dados em tempo real da web e feeds RSS selecionados.</p>
-                </article>
-
-                <article class="sidebar-story">
-                    <div style="background-color: #eee; padding: 10px; border: 1px solid #999; margin-top: 15px;">
-                        <h3>Sistema</h3>
-                        <ul style="padding-left: 15px; font-size: 10px;">
-                            <li>Redundância tripla.</li>
-                            <li>Groq, Gemini, Ollama.</li>
-                            <li>HTML5 & CSS3.</li>
-                        </ul>
-                    </div>
-                </article>
-
-                <article class="sidebar-story" style="margin-top: 15px;">
-                    <h3>Ponto de Vista</h3>
-                    <p style="font-size: 10px;"><em>"IA é copiloto, não piloto. O engenheiro ainda define o destino."</em></p>
-                </article>
-            </div>
-
+      <div class="dashboard-grid">
+        <div class="sidebar">
+          <h3>Fontes Primárias</h3>
+          {% for dado in dados[:5] %}
+          <div class="sidebar-item">
+            <strong>{{ dado.fonte }}</strong>
+            <span>{{ dado.titulo[:50] }}...</span>
+          </div>
+          {% endfor %}
+          
+          <h3>Ficha Técnica</h3>
+          <div class="sidebar-item"><strong>Total Fontes:</strong> {{ dados|length }}</div>
+          <div class="sidebar-item"><strong>Agente:</strong> News-Bot v4.1</div>
         </div>
 
-        <footer>
-            <p>&copy; 2026 J.A.R.V.I.S. AI SYSTEM - IFPB CAMPUS JOÃO PESSOA.</p>
-            <p>LAYOUT OTIMIZADO PARA A4 - GERADO AUTOMATICAMENTE.</p>
-        </footer>
+        <div class="vertical-line"></div>
+
+        <div class="center-panel">
+          
+          {% if galeria_imagens %}
+          <div class="gallery">
+            {% for item in galeria_imagens[:4] %}
+            <div>
+              <img src="{{ item.url }}">
+              <div class="caption">{{ item.titulo[:20] }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% elif imagem_destaque %}
+             <div class="gallery">
+                <div style="grid-column: span 2;">
+                    <img src="{{ imagem_destaque }}" style="height: 200px;">
+                </div>
+             </div>
+          {% endif %}
+          
+          <div class="summary-box">
+            <h3 style="font-family:'Cinzel'; font-size:10pt; text-align:center; border-bottom:1px solid #000; margin-bottom:10px;">RESUMO EXECUTIVO</h3>
+            
+            {% if resumo_executivo %}
+              <p>
+                <span class="drop-cap">{{ resumo_executivo[0] }}</span>{{ resumo_executivo[1:] }}
+              </p>
+            {% else %}
+              <p style="text-align:center; font-style:italic; color:#666; padding:10px;">
+                Aguardando dados de inteligência para processamento...
+              </p>
+            {% endif %}
+
+          </div>
+        </div>
+
+        <div class="vertical-line"></div>
+
+        <div class="sidebar">
+          <h3>Sistema</h3>
+          <div class="sidebar-item"><strong>Processamento</strong>Groq LPU</div>
+          <div class="sidebar-item"><strong>Render</strong>JS Paginator</div>
+          
+          <h3>Status</h3>
+          <div style="border:2px solid var(--accent-red); color:var(--accent-red); text-align:center; padding:10px; font-weight:bold; font-size:9pt; margin-top:10px;">
+            FINALIZADO
+          </div>
+        </div>
+      </div>
     </div>
+
+    <div id="article-flow">
+      <div class="text-block" style="text-align:center; margin-bottom: 40px;">
+         <span style="display:inline-block; border-top:1px solid #000; border-bottom:1px solid #000; padding:5px 20px; font-family:'Cinzel'; font-size:14pt; letter-spacing:2px;">ANÁLISE PROFUNDA</span>
+      </div>
+      <div class="llm-content">
+        {{ conteudo_html | safe }}
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    window.onload = function() {
+      // --- LÓGICA DE PAGINAÇÃO RÍGIDA --- //
+      const container = document.getElementById('print-container');
+      const sourceCover = document.getElementById('cover-content');
+      const sourceArticle = document.querySelector('.llm-content');
+      
+      let pageCount = 1;
+      const docDate = "{{ data_hoje }}";
+
+      function createPage() {
+        const page = document.createElement('div');
+        page.className = 'page';
+        
+        const contentArea = document.createElement('div');
+        contentArea.className = 'content-area';
+        page.appendChild(contentArea);
+
+        const footer = document.createElement('div');
+        footer.className = 'page-footer';
+        footer.innerHTML = `<span>J.A.R.V.I.S. SYSTEM</span><span>${docDate}</span><span>PÁGINA ${pageCount}</span>`;
+        page.appendChild(footer);
+
+        container.appendChild(page);
+        pageCount++;
+        return contentArea;
+      }
+
+      // 1. CAPA
+      const page1Area = createPage();
+      page1Area.innerHTML = sourceCover.innerHTML;
+
+      // 2. MIOLO
+      let currentPageArea = createPage();
+      const MAX_HEIGHT_PX = currentPageArea.offsetHeight;
+      const SAFE_BUFFER = 60; 
+      const SAFE_LIMIT_PX = MAX_HEIGHT_PX - SAFE_BUFFER;
+
+      let currentPixelHeight = 0;
+
+      // Adiciona Header da Seção
+      const headerTitle = document.querySelector('#article-flow .text-block').cloneNode(true);
+      currentPageArea.appendChild(headerTitle);
+      currentPixelHeight += headerTitle.offsetHeight;
+
+      const elements = Array.from(sourceArticle.children); 
+
+      elements.forEach(el => {
+        const clone = el.cloneNode(true);
+        // Adiciona classe para garantir formatação
+        if(!clone.classList.contains('text-block') && clone.tagName !== 'H3') {
+            clone.classList.add('text-block');
+        }
+        
+        clone.style.visibility = 'hidden'; 
+        currentPageArea.appendChild(clone);
+        
+        const elHeight = clone.offsetHeight;
+        const style = window.getComputedStyle(clone);
+        const margin = parseInt(style.marginTop) + parseInt(style.marginBottom);
+        const totalHeight = elHeight + margin;
+
+        if ((currentPixelHeight + totalHeight) > SAFE_LIMIT_PX) {
+          currentPageArea.removeChild(clone);
+          currentPageArea = createPage();
+          currentPixelHeight = 0;
+          
+          clone.style.visibility = 'visible';
+          currentPageArea.appendChild(clone);
+          currentPixelHeight += totalHeight;
+        } else {
+          clone.style.visibility = 'visible';
+          currentPixelHeight += totalHeight;
+        }
+      });
+
+      document.getElementById('source-content').innerHTML = '';
+    };
+  </script>
 
 </body>
 </html>
