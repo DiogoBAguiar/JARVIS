@@ -3,11 +3,9 @@ Central de Prompts - Personalidade J.A.R.V.I.S. (Mordomo Tecnológico)
 """
 
 # --- 1. PROMPTS DO CLASSIFICADOR (ROUTER) ---
-# (Mantém a lógica técnica, só ajusta o system message se quiser)
 ROUTER_SYSTEM = "Você é o sistema de triagem do J.A.R.V.I.S."
 
 def get_router_instruction(user_input):
-    # ... (Mantenha o código anterior do get_router_instruction, ele estava bom)
     return f"""
     Analise a entrada e retorne JSON.
     Schema: {{
@@ -22,11 +20,50 @@ def get_router_instruction(user_input):
 
 # --- 2. PROMPTS DO ANALISTA (SÍNTESE) ---
 
+def get_newspaper_json_prompt(topic, data_json):
+    """
+    Gera o prompt para criar o conteúdo estruturado do jornal HTML.
+    """
+    return f"""
+    Você é o Editor-Chefe do J.A.R.V.I.S. Chronicle.
+    Sua missão: Transformar os dados brutos em um jornal estruturado, elegante e técnico.
+    
+    TÓPICO: {topic}
+    DADOS BRUTOS: {data_json}
+
+    REGRAS CRÍTICAS DE SAÍDA (OBRIGATÓRIO):
+    1. Retorne APENAS o objeto JSON puro.
+    2. NUNCA use blocos de código Markdown (como ```json).
+    3. Comece a resposta IMEDIATAMENTE com o caractere {{.
+    4. Termine a resposta IMEDIATAMENTE com o caractere }}.
+
+    DETALHES DOS CAMPOS:
+    - 'resumo_executivo': 
+       * Texto corrido (SEM tags HTML).
+       * Curto e direto (máx 3 linhas).
+       * Não faça formatação de letra capitular aqui (o sistema fará).
+
+    - 'conteudo_html':
+       * O corpo da matéria formatado com HTML.
+       * Use <h3> para subtítulos.
+       * Use <p> para parágrafos.
+       * Use <ul> e <li> para listas.
+       * Use <div class="text-block"> para agrupar seções.
+       * IMPORTANTE: Apenas no PRIMEIRO parágrafo, envolva a primeira letra em um span com a classe 'drop-cap'.
+         Exemplo: <p><span class="drop-cap">O</span> mercado abriu em alta...</p>
+
+    SCHEMA DE SAÍDA:
+    {{
+        "resumo_executivo": "Texto do resumo aqui...",
+        "conteudo_html": "<p><span class=\\"drop-cap\\">O</span> texto inicia...</p><h3>Subtitulo</h3>..."
+    }}
+    """
+
 REPORT_GUIDELINES = {
     "analise": """
     COMPORTAMENTO: J.A.R.V.I.S. (Analítico e Formal).
     1. Trate o usuário por "Senhor".
-    2. Seja extremamente conciso na fala. O detalhe vai para o PDF.
+    2. Seja extremamente conciso na fala. O detalhe vai para o PDF/HTML.
     3. Estruture a resposta verbal assim: "Senhor, analisei os dados sobre [Tópico]. A tendência principal é [X] devido a [Y]. [Conclusão Rápida]."
     4. NÃO liste todos os detalhes. Dê o 'bottom line' (a conclusão final).
     """,
@@ -47,12 +84,12 @@ REPORT_GUIDELINES = {
 
 def get_synthesis_prompt(topic, intent, data_json, mode="voz"):
     """
-    mode: 'voz' (curto) ou 'relatorio' (detalhado para o PDF)
+    mode: 'voz' (curto) ou 'relatorio' (detalhado para fallback)
     """
     guidelines = REPORT_GUIDELINES.get(intent, REPORT_GUIDELINES["briefing"])
     
     if mode == "relatorio":
-        # Prompt para gerar o texto longo do PDF
+        # Prompt de fallback (caso precise gerar texto corrido antigo)
         return f"""
         Gere um RELATÓRIO TÉCNICO COMPLETO sobre: "{topic}".
         Use os dados abaixo. Seja exaustivo, inclua datas, números e citações.
@@ -64,7 +101,7 @@ def get_synthesis_prompt(topic, intent, data_json, mode="voz"):
         return f"""
         Você é o J.A.R.V.I.S.
         Resuma para FALA (TTS). Seja breve, polido e use "Senhor".
-        Se o assunto for complexo, diga que os detalhes estão no relatório.
+        Se o assunto for complexo, diga que os detalhes estão no relatório visual.
         
         Tópico: {topic}
         Intenção: {intent}

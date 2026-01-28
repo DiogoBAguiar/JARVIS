@@ -88,7 +88,7 @@ class SafeAgent:
             for key in groq_keys:
                 try:
                     # Cria uma instância do modelo para cada chave
-                    model_instance = Groq(id="llama-3.3-70b-versatile", api_key=key)
+                    model_instance = Groq(id="llama-3.3-70b-versatile", api_key=key , max_tokens=2048)
                     self.groq_pool.append(model_instance)
                 except: pass
         else:
@@ -180,7 +180,7 @@ class LLMFactory:
         # (O SafeAgent vai substituir isso depois com o pool de chaves)
         keys = get_all_groq_keys()
         if keys:
-            return Groq(id=preferred_model, api_key=keys[0])
+            return Groq(id=preferred_model, api_key=keys[0] , max_tokens=2048)
         
         gemini_key = os.getenv("GEMINI_API_KEY")
         if gemini_key: return Gemini(id="gemini-1.5-flash", api_key=gemini_key)
