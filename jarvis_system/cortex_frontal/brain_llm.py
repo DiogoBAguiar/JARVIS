@@ -2,9 +2,14 @@ import os
 import time
 import datetime
 import re
-from typing import Optional
-from groq import Groq
+import random
+from typing import Optional, List
+from groq import Groq, RateLimitError, APIConnectionError
 import ollama
+from dotenv import load_dotenv
+
+# --- CARREGA O .ENV EXPLICITAMENTE ---
+load_dotenv()
 
 # Imports do Sistema
 from jarvis_system.cortex_frontal.observability import JarvisLogger
@@ -17,24 +22,55 @@ except ImportError:
     log.warning("Hipocampo (Memória) não encontrado ou falhou ao carregar.")
     memoria = None
 
+class KeyManager:
+    """Gerenciador de Rotação de Chaves para evitar Rate Limit"""
+    def __init__(self):
+        self.keys = []
+        self._load_keys()
+        self.current_index = 0
+
+    def _load_keys(self):
+        # 1. Pega a chave principal
+        main_key = os.getenv("GROQ_API_KEY")
+        if main_key:
+            self.keys.append(main_key)
+        
+        # 2. Pega as chaves numeradas (1 a 20 para garantir escalabilidade)
+        for i in range(1, 20):
+            k = os.getenv(f"GROQ_API_KEY_{i}")
+            if k:
+                self.keys.append(k)
+        
+        # Embaralha para distribuir a carga se reiniciar
+        if self.keys:
+            random.shuffle(self.keys)
+            log.info(f"🔑 KeyManager: {len(self.keys)} chaves Groq carregadas no pool.")
+        else:
+            log.critical("❌ Nenhuma chave GROQ_API_KEY encontrada no .env!")
+
+    def get_current_client(self) -> Optional[Groq]:
+        if not self.keys: return None
+        return Groq(api_key=self.keys[self.current_index])
+
+    def rotate(self):
+        """Avança para a próxima chave da lista"""
+        if not self.keys: return
+        anterior = self.current_index
+        self.current_index = (self.current_index + 1) % len(self.keys)
+        log.warning(f"🔄 Rotacionando API Key: ID {anterior} -> ID {self.current_index}")
+
 class HybridBrain:
     def __init__(self):
-        self.api_key = os.getenv("GROQ_API_KEY")
+        self.key_manager = KeyManager()
+        self.client_groq = self.key_manager.get_current_client()
+        
         self.model_cloud = os.getenv("JARVIS_MODEL_CLOUD", "llama-3.3-70b-versatile")
         self.model_local = os.getenv("JARVIS_MODEL_LOCAL", "qwen2:0.5b")
         
-        self.client_groq: Optional[Groq] = None
-        self._initialize_cloud()
-
-    def _initialize_cloud(self):
-        if self.api_key:
-            try:
-                self.client_groq = Groq(api_key=self.api_key)
-                log.info(f"☁️ Córtex Nuvem Conectado: {self.model_cloud}")
-            except Exception as e:
-                log.error(f"❌ Erro ao conectar Groq: {e}")
+        if self.client_groq:
+            log.info(f"☁️ Córtex Nuvem Conectado: {self.model_cloud}")
         else:
-            log.warning("⚠️ Modo Offline Forçado (Sem API Key).")
+            log.warning("⚠️ Modo Offline Forçado (Sem API Keys).")
 
     @property
     def _dynamic_system_prompt(self) -> str:
@@ -89,21 +125,33 @@ class HybridBrain:
         resposta = ""
         provider = "NENHUM"
 
-        # 4. Inferência
+        # 4. Inferência (COM ROTAÇÃO DE CHAVES)
         if self.client_groq:
-            try:
-                resposta = self._inferencia_nuvem(prompt_final)
-                provider = f"NUVEM ({self.model_cloud})"
-            except Exception as e:
-                log.warning(f"Falha na Nuvem: {e}. Tentando local...")
+            # Tenta até 3 vezes rodando as chaves se der erro de conexão ou limite
+            tentativas = 3
+            for i in range(tentativas):
+                try:
+                    resposta = self._inferencia_nuvem(prompt_final)
+                    provider = f"NUVEM ({self.model_cloud})"
+                    break # Sucesso, sai do loop
+                except (RateLimitError, APIConnectionError) as e:
+                    log.warning(f"⚠️ Erro na Groq (Tentativa {i+1}/{tentativas}): {e}")
+                    self.key_manager.rotate() # Troca a chave na lista
+                    self.client_groq = self.key_manager.get_current_client() # Atualiza o cliente ativo
+                    time.sleep(0.5) # Pequena pausa para estabilidade
+                except Exception as e:
+                    log.error(f"❌ Erro genérico na nuvem: {e}")
+                    break # Se não for rate limit, provavelmente é erro de lógica, não adianta rotacionar
         
+        # 5. Fallback Local (Se todas as chaves falharem ou houver erro grave)
         if not resposta:
             try:
+                log.info("🔻 Caindo para modelo LOCAL...")
                 resposta = self._inferencia_local(prompt_final)
                 provider = f"LOCAL ({self.model_local})"
             except Exception as e:
-                log.critical(f"Falha Cognitiva Total: {e}")
-                return "Erro crítico no sistema."
+                log.critical(f"💀 Falha Cognitiva Total: {e}")
+                return "Senhor, meus sistemas neurais falharam completamente."
 
         latency = time.time() - start_time
         log.info(f"🧠 Pensamento: {latency:.2f}s via {provider}")

@@ -2,6 +2,7 @@ relatorios_inteligencia/
 whatsapp_session/
 temp_images/
 spotify_web_session
+voice_bank_fish
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
