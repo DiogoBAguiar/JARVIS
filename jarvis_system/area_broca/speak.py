@@ -1,21 +1,23 @@
 import os
 import threading
 import queue
-import asyncio
 import hashlib
-import pygame
-import edge_tts
-import pyttsx3
 import json
-from typing import Optional
+import pygame
+import pyttsx3
+import requests
+import re
+from dotenv import load_dotenv
 
 # Core Imports
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
+from jarvis_system.area_broca.frases_padrao import FRASES_DO_SISTEMA
 
-# Configurações de Voz
-VOICE_NAME = "pt-BR-AntonioNeural"
+load_dotenv()
+
+FISH_AUDIO_API_URL = "https://api.fish.audio/v1/tts"
 
 class NeuralSpeaker:
     def __init__(self):
@@ -24,166 +26,233 @@ class NeuralSpeaker:
         self._stop_event = threading.Event()
         self._thread = None
         
-        # --- CAMADAS DE MEMÓRIA DE VOZ ---
-        # 1. Pasta de Áudios "Premium" (Pré-moldados com F5-TTS)
-        self.static_dir = os.path.join(os.path.dirname(__file__), "static_audio")
-        os.makedirs(self.static_dir, exist_ok=True)
+        self.fish_api_key = os.getenv("FISHAUDIO_API_KEY")
+        self.fish_model_id = os.getenv("FISHAUDIO_MODEL_ID")
+
+        # --- DIRETÓRIOS ---
+        # Ajustado para sua estrutura: PROJETO/jarvis_system/data/voices
+        self.base_dir = os.path.join(os.getcwd(), "jarvis_system", "data", "voices")
+        self.audio_dir = os.path.join(self.base_dir, "assets")
+        self.index_path = os.path.join(self.base_dir, "voice_index.json")
         
-        # 2. Pasta de Cache Dinâmico (Para não baixar a mesma frase 2x)
-        self.cache_dir = os.path.join(os.getcwd(), "jarvis_system", "data", "voice_cache")
-        os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.audio_dir, exist_ok=True)
 
-        # [NOVO] Arquivo de Aprendizado (Onde anotamos o que falta)
-        self.arquivo_faltantes = os.path.join(os.getcwd(), "jarvis_system", "data", "vocabulario_pendente.txt")
-        self.palavras_faltantes = set()
+        self.voice_index = {} 
+        self._carregar_indice()
 
-        # 3. Mapeamento Texto -> Arquivo Fixo
-        # Dica: Use chaves em minúsculo e sem pontuação para facilitar o match
-        self.soundboard = {
-            "sim senhor": "sim_senhor.mp3",
-            "pois não": "pois_nao.mp3",
-            "sistemas online": "sistemas_online.mp3",
-            "processando": "processando.mp3",
-            "entendido": "entendido.mp3",
-            "claro": "claro.mp3",
-            "desligando sistemas": "desligando.mp3",
-            "acesso autorizado": "acesso_autorizado.mp3",
-            "acesso negado": "acesso_negado.mp3"
-        }
-
-        # Inicializa Mixers
-        try:
-            pygame.mixer.init()
-        except Exception as e:
-            self.log.critical(f"Erro audio: {e}")
-
-        self.engine_offline = None
-        self._setup_offline_tts()
+        try: pygame.mixer.init()
+        except: pass
+        self.engine_offline = pyttsx3.init()
         
-        # Se inscreve para receber ordens de fala
         bus.inscrever(Eventos.FALAR, self._adicionar_a_fila)
 
-    def _setup_offline_tts(self):
-        """Configura o pyttsx3 para caso a internet falhe."""
-        try:
-            self.engine_offline = pyttsx3.init()
-            # Tenta encontrar uma voz em português no sistema
-            voices = self.engine_offline.getProperty('voices')
-            for voice in voices:
-                if "brazil" in voice.name.lower() or "portuguese" in voice.name.lower():
-                    self.engine_offline.setProperty('voice', voice.id)
-                    break
-        except: pass
+    def _normalizar_chave(self, texto: str) -> str:
+        if not texto: return ""
+        texto = re.sub(r'\([^)]*\)', '', texto)
+        texto = texto.lower()
+        texto = texto.replace('á', 'a').replace('à', 'a').replace('ã', 'a').replace('â', 'a')
+        texto = texto.replace('é', 'e').replace('ê', 'e')
+        texto = texto.replace('í', 'i')
+        texto = texto.replace('ó', 'o').replace('õ', 'o').replace('ô', 'o')
+        texto = texto.replace('ú', 'u')
+        texto = texto.replace('ç', 'c')
+        return re.sub(r'[^a-z0-9]', '', texto)
+
+    def _carregar_indice(self):
+        if os.path.exists(self.index_path):
+            try:
+                with open(self.index_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for item_id, metadata in data.items():
+                        chave = metadata.get("key_hash")
+                        if chave:
+                            self.voice_index[chave] = metadata
+                self.log.info(f"📂 Índice Vocal Carregado: {len(self.voice_index)} frases.")
+            except Exception as e:
+                self.log.error(f"Erro ao ler voice_index.json: {e}")
+                self.voice_index = {}
+        else:
+            self.log.warning("⚠️ voice_index.json não encontrado.")
+
+    def _salvar_indice(self, novo_dado: dict):
+        dados_atuais = {}
+        if os.path.exists(self.index_path):
+            try:
+                with open(self.index_path, 'r', encoding='utf-8') as f:
+                    dados_atuais = json.load(f)
+            except: pass
+        
+        item_id = novo_dado["id"]
+        dados_atuais[item_id] = novo_dado
+        
+        with open(self.index_path, 'w', encoding='utf-8') as f:
+            json.dump(dados_atuais, f, indent=4, ensure_ascii=False)
+            
+        self.voice_index[novo_dado["key_hash"]] = novo_dado
+
+    def _determinar_categoria(self, texto_limpo: str) -> str:
+        chave_procurada = self._normalizar_chave(texto_limpo)
+        for categoria, lista_frases in FRASES_DO_SISTEMA.items():
+            for frase in lista_frases:
+                if self._normalizar_chave(frase) == chave_procurada:
+                    return categoria
+        return "GENERICO"
+
+    # --- NOVO: Lógica de Detecção de Contexto ---
+    def _detectar_contexto(self, texto: str) -> str:
+        """Detecta contexto temporal ou situacional."""
+        t = texto.lower().replace("_", " ")
+        
+        # Lógica Temporal
+        if "bom dia" in t: return "morning"
+        if "boa tarde" in t: return "afternoon"
+        if "boa noite" in t: return "night"
+        
+        # Futuro: Adicione aqui lógicas para subcontextos se desejar
+        # ex: if "saindo" in t: return "exit"
+        
+        return "any"
+
+    def _gerar_proximo_id(self, categoria: str) -> str:
+        count = 1
+        dados_existentes = {}
+        if os.path.exists(self.index_path):
+            try:
+                with open(self.index_path, 'r', encoding='utf-8') as f:
+                    dados_existentes = json.load(f)
+            except: pass
+
+        while True:
+            candidato = f"{categoria.lower()}_{count:02d}"
+            if candidato not in dados_existentes:
+                return candidato
+            count += 1
 
     def _adicionar_a_fila(self, evento: Evento):
         texto = evento.dados.get("texto")
         if texto: self._queue.put(texto)
 
-    def _normalizar_chave(self, texto: str) -> str:
-        """Limpa o texto para tentar achar no soundboard (remove pontuação básica)."""
-        return texto.lower().strip().replace(".", "").replace("!", "")
+    def _aprender_e_catalogar(self, texto_original: str, chave: str) -> str:
+        if not self.fish_api_key: return None
 
-    def _registrar_falta(self, texto: str):
-        """Anota frases curtas que não temos no banco para aprender depois."""
-        # Só aprende frases curtas (1 a 4 palavras) para não poluir o banco com frases complexas demais
-        if len(texto.split()) > 4: return
+        texto_limpo_api = texto_original.replace("_", " ")
+
+        # 1. Metadados Inteligentes
+        categoria = self._determinar_categoria(texto_original)
+        contexto = self._detectar_contexto(texto_original)
+        # sub_contexto = "" # Espaço reservado para lógica futura
+
+        novo_id = self._gerar_proximo_id(categoria)
+        nome_arquivo = f"{novo_id}.mp3"
+
+        # 2. Definição da Pasta Profunda (assets/CATEGORIA/contexto/)
+        pasta_destino = os.path.join(self.audio_dir, categoria, contexto)
         
-        if texto not in self.palavras_faltantes:
-            self.palavras_faltantes.add(texto)
-            try:
-                # Garante que o diretório data existe
-                os.makedirs(os.path.dirname(self.arquivo_faltantes), exist_ok=True)
-                with open(self.arquivo_faltantes, "a", encoding="utf-8") as f:
-                    f.write(f"{texto}\n")
-                self.log.debug(f"📝 Anotado para aprender: '{texto}'")
-            except Exception as e:
-                self.log.warning(f"Erro ao registrar vocabulario: {e}")
+        # Se tivesse subcontexto, seria:
+        # pasta_destino = os.path.join(self.audio_dir, categoria, contexto, sub_contexto)
+
+        os.makedirs(pasta_destino, exist_ok=True)
+        
+        caminho_absoluto = os.path.join(pasta_destino, nome_arquivo)
+        # Caminho relativo para o JSON (com barras normais /)
+        caminho_relativo = f"assets/{categoria}/{contexto}/{nome_arquivo}"
+
+        # 3. API Fish Audio
+        headers = {"Authorization": f"Bearer {self.fish_api_key}", "Content-Type": "application/json"}
+        payload = {
+            "text": texto_limpo_api,
+            "format": "mp3",
+            "latency": "balanced",
+            "normalize": True,
+            "reference_id": self.fish_model_id if self.fish_model_id else None
+        }
+
+        try:
+            self.log.info(f"🐟 Aprendendo: [{categoria}/{contexto}] '{texto_limpo_api[:25]}...'")
+            response = requests.post(FISH_AUDIO_API_URL, json=payload, headers=headers, timeout=15)
+            
+            if response.status_code == 200:
+                with open(caminho_absoluto, "wb") as f:
+                    f.write(response.content)
+                
+                novo_registro = {
+                    "id": novo_id,
+                    "text": texto_limpo_api,
+                    "file_path": caminho_relativo,
+                    "category": categoria,
+                    "key_hash": chave,
+                    "context": contexto,
+                    # "sub_context": sub_contexto
+                }
+                
+                self._salvar_indice(novo_registro)
+                self.log.info(f"✅ Salvo: {caminho_relativo}")
+                return caminho_absoluto
+            else:
+                self.log.error(f"Erro API: {response.text}")
+                return None
+        except Exception as e:
+            self.log.error(f"Erro Conexão: {e}")
+            return None
 
     def _worker(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
         while not self._stop_event.is_set():
             try:
                 texto_original = self._queue.get(timeout=1.0)
-                texto_chave = self._normalizar_chave(texto_original)
+                chave = self._normalizar_chave(texto_original)
+                caminho_audio = None
                 
                 bus.publicar(Evento(Eventos.STATUS_FALA, {"status": True}))
-                sucesso = False
 
-                # ---------------------------------------------------------
-                # CAMADA 1: SOUNDBOARD (Áudios de Estúdio Pré-Gravados)
-                # ---------------------------------------------------------
-                if texto_chave in self.soundboard:
-                    arquivo_fixo = os.path.join(self.static_dir, self.soundboard[texto_chave])
-                    if os.path.exists(arquivo_fixo):
-                        self.log.info(f"💿 Soundboard: '{texto_chave}'")
-                        self._reproduzir_audio_pygame(arquivo_fixo)
-                        sucesso = True
-                
-                # ---------------------------------------------------------
-                # CAMADA 2: CACHE DINÂMICO (Já gerou isso antes?)
-                # ---------------------------------------------------------
-                if not sucesso:
-                    hash_md5 = hashlib.md5(texto_original.encode()).hexdigest()
-                    arquivo_cache = os.path.join(self.cache_dir, f"{hash_md5}.mp3")
+                if chave in self.voice_index:
+                    entry = self.voice_index[chave]
+                    # Reconstrói caminho absoluto
+                    path_rel = entry.get("file_path")
+                    # Corrige barras para o SO atual
+                    path_rel = path_rel.replace("/", os.sep).replace("\\", os.sep)
+                    abs_path = os.path.join(self.base_dir, path_rel)
                     
-                    if os.path.exists(arquivo_cache):
-                        self.log.debug(f"⚡ Cache Hit: '{texto_original[:15]}...'")
-                        self._reproduzir_audio_pygame(arquivo_cache)
-                        sucesso = True
+                    if os.path.exists(abs_path):
+                        self.log.info(f"🗂️ Índice Hit: [{entry['id']}]")
+                        caminho_audio = abs_path
                     else:
-                        # [NOVO] OPORTUNIDADE DE APRENDIZADO
-                        # Se não temos cache nem soundboard, anotamos para a Fábrica F5 gerar depois
-                        self._registrar_falta(texto_chave)
+                        self.log.warning(f"Arquivo sumiu: {abs_path}")
 
-                        # -----------------------------------------------------
-                        # CAMADA 3: GERAÇÃO ONLINE (Edge TTS)
-                        # -----------------------------------------------------
-                        try:
-                            # Gera e SALVA no cache para a próxima vez
-                            communicate = edge_tts.Communicate(texto_original, VOICE_NAME)
-                            loop.run_until_complete(communicate.save(arquivo_cache))
-                            
-                            self._reproduzir_audio_pygame(arquivo_cache)
-                            sucesso = True
-                        except Exception as e:
-                            self.log.warning(f"Falha online: {e}")
+                if not caminho_audio:
+                    caminho_audio = self._aprender_e_catalogar(texto_original, chave)
 
-                # ---------------------------------------------------------
-                # CAMADA 4: FALLBACK (Robótico)
-                # ---------------------------------------------------------
-                if not sucesso:
-                    self._falar_offline(texto_original)
-
+                if caminho_audio and os.path.exists(caminho_audio):
+                    self._reproduzir_audio_pygame(caminho_audio)
+                else:
+                    texto_limpo = re.sub(r'\([^)]*\)', '', texto_original)
+                    self._falar_offline(texto_limpo)
+                
                 bus.publicar(Evento(Eventos.STATUS_FALA, {"status": False}))
                 self._queue.task_done()
 
             except queue.Empty: continue
             except Exception as e:
                 self.log.error(f"Erro worker: {e}")
-                bus.publicar(Evento(Eventos.STATUS_FALA, {"status": False}))
 
-    def _reproduzir_audio_pygame(self, caminho: str):
+    def _reproduzir_audio_pygame(self, caminho):
         try:
             pygame.mixer.music.load(caminho)
             pygame.mixer.music.play()
             while pygame.mixer.music.get_busy() and not self._stop_event.is_set():
                 pygame.time.Clock().tick(10)
-            pygame.mixer.music.unload()
-        except Exception as e:
-            self.log.error(f"Erro playback: {e}")
+        except: pass
 
     def _falar_offline(self, texto):
         if self.engine_offline:
-            self.engine_offline.say(texto)
-            self.engine_offline.runAndWait()
+            try:
+                self.engine_offline.say(texto)
+                self.engine_offline.runAndWait()
+            except: pass
 
     def start(self):
-        # CORREÇÃO: Separar a criação do start para não perder a referência
         if not self._thread or not self._thread.is_alive():
             self._stop_event.clear()
-            self._thread = threading.Thread(target=self._worker, name="BrocaSpeaker", daemon=True)
+            self._thread = threading.Thread(target=self._worker, daemon=True)
             self._thread.start()
 
     def stop(self):
@@ -191,5 +260,4 @@ class NeuralSpeaker:
         if self._thread:
             self._thread.join(timeout=2.0)
 
-# Instância Global
 mouth = NeuralSpeaker()

@@ -1,0 +1,905 @@
+{
+    "acessonaoautorizado": {
+        "id": "alerta_01",
+        "text": "Acesso Não Autorizado",
+        "file_path": "assets/ALERTA/any/alerta_01.mp3",
+        "category": "ALERTA",
+        "key_hash": "acessonaoautorizado",
+        "context": "any"
+    },
+    "alertadesegurancaintrusaodetectada": {
+        "id": "alerta_02",
+        "text": "Alerta de segurança: Intrusão detectada.",
+        "file_path": "assets/ALERTA/any/alerta_02.mp3",
+        "category": "ALERTA",
+        "key_hash": "alertadesegurancaintrusaodetectada",
+        "context": "any"
+    },
+    "alertadesegurancariscodetectado": {
+        "id": "alerta_03",
+        "text": "Alerta de segurança: Risco detectado.",
+        "file_path": "assets/ALERTA/any/alerta_03.mp3",
+        "category": "ALERTA",
+        "key_hash": "alertadesegurancariscodetectado",
+        "context": "any"
+    },
+    "atencaoformacaodegeloemnivel": {
+        "id": "alerta_04",
+        "text": "Atenção: Formação de gelo em nível.",
+        "file_path": "assets/ALERTA/any/alerta_04.mp3",
+        "category": "ALERTA",
+        "key_hash": "atencaoformacaodegeloemnivel",
+        "context": "any"
+    },
+    "atencaosenhoralgosaiudoprevisto": {
+        "id": "alerta_05",
+        "text": "Atenção, senhor! Algo saiu do previsto.",
+        "file_path": "assets/ALERTA/any/alerta_05.mp3",
+        "category": "ALERTA",
+        "key_hash": "atencaosenhoralgosaiudoprevisto",
+        "context": "any"
+    },
+    "recomendocautelaimediata": {
+        "id": "alerta_06",
+        "text": "Recomendo cautela imediata.",
+        "file_path": "assets/ALERTA/any/alerta_06.mp3",
+        "category": "ALERTA",
+        "key_hash": "recomendocautelaimediata",
+        "context": "any"
+    },
+    "senhornaovamosconseguir": {
+        "id": "alerta_07",
+        "text": "Senhor, não vamos conseguir.",
+        "file_path": "assets/ALERTA/any/alerta_07.mp3",
+        "category": "ALERTA",
+        "key_hash": "senhornaovamosconseguir",
+        "context": "any"
+    },
+    "superaquecimentoiminenterecomendocautela": {
+        "id": "alerta_08",
+        "text": "Superação iminente, recomendo cautela.",
+        "file_path": "assets/ALERTA/any/alerta_08.mp3",
+        "category": "ALERTA",
+        "key_hash": "superaquecimentoiminenterecomendocautela",
+        "context": "any"
+    },
+    "bemvindodevolta": {
+        "id": "boas_vindas_01",
+        "text": "Bem-vindo de volta.",
+        "file_path": "assets/BOAS_VINDAS/any/return/boas_vindas_01.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "bemvindodevolta",
+        "context": "any",
+        "sub_context": "return"
+    },
+    "bemvindodevoltasenhorsentisuanoslogs": {
+        "id": "boas_vindas_02",
+        "text": "Bem-vindo de volta, Senhor. Senti sua falta nos logs.",
+        "file_path": "assets/BOAS_VINDAS/any/return/boas_vindas_02.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "bemvindodevoltasenhorsentisuafaltanoslogs",
+        "context": "any",
+        "sub_context": "return"
+    },
+    "boanoitepossoauxilialocomalgo": {
+        "id": "boas_vindas_03",
+        "text": "Boa noite, posso auxiliá-lo com algo?",
+        "file_path": "assets/BOAS_VINDAS/night/query/boas_vindas_03.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "boanoitepossoauxilialocomalgoantesdodescanso?",
+        "context": "night",
+        "sub_context": "query"
+    },
+    "boanoitesenhordesejarevisaralgo": {
+        "id": "boas_vindas_04",
+        "text": "Boa noite, Senhor. Deseja revisar algo?",
+        "file_path": "assets/BOAS_VINDAS/night/query/boas_vindas_04.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "boanoitesenhordesejarevisaralgoantesdeencerrarodia",
+        "context": "night",
+        "sub_context": "query"
+    },
+    "boatardesenhoremquepossoajudaloagora": {
+        "id": "boas_vindas_05",
+        "text": "Boa tarde senhor, em que posso ajudá-lo agora?",
+        "file_path": "assets/BOAS_VINDAS/afternoon/query/boas_vindas_05.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "boatardesenhoremquepossoajudaloagora",
+        "context": "afternoon",
+        "sub_context": "query"
+    },
+    "boatardeseussistemasestaoestaveiseadisposicao": {
+        "id": "boas_vindas_06",
+        "text": "Boa tarde. Seus sistemas estão estáveis e à disposição.",
+        "file_path": "assets/BOAS_VINDAS/afternoon/status/boas_vindas_06.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "boatardeseussistemasestaoestaveiseadisposicao",
+        "context": "afternoon",
+        "sub_context": "status"
+    },
+    "bomdiasenhoroquedesejafazerhoje": {
+        "id": "boas_vindas_07",
+        "text": "Bom dia, senhor. O que deseja fazer hoje?",
+        "file_path": "assets/BOAS_VINDAS/morning/query/boas_vindas_07.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "bomdiasenhoroquedesejafazerhoje",
+        "context": "morning",
+        "sub_context": "query"
+    },
+    "bomdiasenhortodosossistemasestaoprontosparauso": {
+        "id": "boas_vindas_08",
+        "text": "Bom dia, senhor. Todos os sistemas estão prontos para uso.",
+        "file_path": "assets/BOAS_VINDAS/morning/status/boas_vindas_08.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "bomdiasenhortodosossistemasestaoprontosparauso",
+        "context": "morning",
+        "sub_context": "status"
+    },
+    "conexaorestabelecidaaguardandoseuscomandos": {
+        "id": "boas_vindas_09",
+        "text": "Conexão restabelecida. Aguardando seus comandos.",
+        "file_path": "assets/BOAS_VINDAS/any/return/boas_vindas_09.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "conexaorestabelecidaaguardandoseuscomandos",
+        "context": "any",
+        "sub_context": "return"
+    },
+    "emquepossoserutilhoje": {
+        "id": "boas_vindas_10",
+        "text": "Em que posso ser útil hoje?",
+        "file_path": "assets/BOAS_VINDAS/any/query/boas_vindas_10.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "emquepossoserutilhoje",
+        "context": "any",
+        "sub_context": "query"
+    },
+    "jarvisonlinesenhorcomopossoserutil": {
+        "id": "boas_vindas_11",
+        "text": "Jarvis online, Senhor. Como posso ser útil?",
+        "file_path": "assets/BOAS_VINDAS/any/boot/boas_vindas_11.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "jarvisonlinesenhorcomopossoserutil",
+        "context": "any",
+        "sub_context": "boot"
+    },
+    "prontoparaservilo": {
+        "id": "boas_vindas_12",
+        "text": "Pronto para servi-lo.",
+        "file_path": "assets/BOAS_VINDAS/any/passive/boas_vindas_12.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "prontoparaservilo",
+        "context": "any",
+        "sub_context": "passive"
+    },
+    "sempreaoseudisporsenhor": {
+        "id": "boas_vindas_13",
+        "text": "Sempre ao seu dispor, Senhor.",
+        "file_path": "assets/BOAS_VINDAS/any/passive/boas_vindas_13.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "sempreaoseudisporsenhor",
+        "context": "any",
+        "sub_context": "passive"
+    },
+    "sessaoretomadaprontoparacontinuardeondeparamos": {
+        "id": "boas_vindas_14",
+        "text": "Sessão retomada, pronto para continuar de onde paramos.",
+        "file_path": "assets/BOAS_VINDAS/any/return/boas_vindas_14.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "sessaoretomadaprontoparacontinuardeondeparamos",
+        "context": "any",
+        "sub_context": "return"
+    },
+    "eumprazerestaronline": {
+        "id": "boas_vindas_15",
+        "text": "É um prazer estar online.",
+        "file_path": "assets/BOAS_VINDAS/any/boot/boas_vindas_15.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "eumprazerestaronline",
+        "context": "any",
+        "sub_context": "boot"
+    },
+    "alvosadquiridos": {
+        "id": "combate_01",
+        "text": "Alvos Adquiridos",
+        "file_path": "assets/COMBATE/any/combate_01.mp3",
+        "category": "COMBATE",
+        "key_hash": "alvosadquiridos",
+        "context": "any"
+    },
+    "ativandosistemasdedefesa": {
+        "id": "combate_02",
+        "text": "Ativando sistemas de defesa.",
+        "file_path": "assets/COMBATE/any/combate_02.mp3",
+        "category": "COMBATE",
+        "key_hash": "ativandosistemasdedefesa",
+        "context": "any"
+    },
+    "senhorcuidadoaesquerda": {
+        "id": "combate_03",
+        "text": "Senhor, cuidado à esquerda.",
+        "file_path": "assets/COMBATE/any/combate_03.mp3",
+        "category": "COMBATE",
+        "key_hash": "senhorcuidadoaesquerda",
+        "context": "any"
+    },
+    "zonahostilconfirmada": {
+        "id": "combate_04",
+        "text": "Zona Hostil Confirmada",
+        "file_path": "assets/COMBATE/any/combate_04.mp3",
+        "category": "COMBATE",
+        "key_hash": "zonahostilconfirmada",
+        "context": "any"
+    },
+    "comodesejariniciandoprocedimento": {
+        "id": "confirmacao_01",
+        "text": "Como desejo iniciar procedimento?",
+        "file_path": "assets/CONFIRMACAO/any/confirmacao_01.mp3",
+        "category": "CONFIRMACAO",
+        "key_hash": "comodesejariniciandoprocedimento",
+        "context": "any"
+    },
+    "entendidosenhorexecutandoagora": {
+        "id": "confirmacao_02",
+        "text": "Entendido, senhor; executando agora.",
+        "file_path": "assets/CONFIRMACAO/any/confirmacao_02.mp3",
+        "category": "CONFIRMACAO",
+        "key_hash": "entendidosenhorexecutandoagora",
+        "context": "any"
+    },
+    "execucaoconcluidacomsucesso": {
+        "id": "confirmacao_03",
+        "text": "Execução concluída com sucesso!",
+        "file_path": "assets/CONFIRMACAO/any/confirmacao_03.mp3",
+        "category": "CONFIRMACAO",
+        "key_hash": "execucaoconcluidacomsucesso",
+        "context": "any"
+    },
+    "solicitacaorecebidaprocessando": {
+        "id": "confirmacao_04",
+        "text": "Solicitação recebida; processando.",
+        "file_path": "assets/CONFIRMACAO/any/confirmacao_04.mp3",
+        "category": "CONFIRMACAO",
+        "key_hash": "solicitacaorecebidaprocessando",
+        "context": "any"
+    },
+    "tarefaemandamento": {
+        "id": "confirmacao_05",
+        "text": "Tarefa em andamento.",
+        "file_path": "assets/CONFIRMACAO/any/confirmacao_05.mp3",
+        "category": "CONFIRMACAO",
+        "key_hash": "tarefaemandamento",
+        "context": "any"
+    },
+    "baixandoplantasdoservidorprincipal": {
+        "id": "dados_01",
+        "text": "Baixando plantas do servidor principal.",
+        "file_path": "assets/DADOS/any/dados_01.mp3",
+        "category": "DADOS",
+        "key_hash": "baixandoplantasdoservidorprincipal",
+        "context": "any"
+    },
+    "compilandohistoricodenavegacao": {
+        "id": "dados_02",
+        "text": "Compilando histórico de navegação.",
+        "file_path": "assets/DADOS/any/dados_02.mp3",
+        "category": "DADOS",
+        "key_hash": "compilandohistoricodenavegacao",
+        "context": "any"
+    },
+    "nemtodadecisaomereceserrevertida": {
+        "id": "dark_01",
+        "text": "Nem toda decisão merece ser revertida.",
+        "file_path": "assets/DARK/any/dark_01.mp3",
+        "category": "DARK",
+        "key_hash": "nemtodadecisaomereceserrevertida",
+        "context": "any"
+    },
+    "osistemaobservaeaprende": {
+        "id": "dark_02",
+        "text": "O sistema observa e aprende.",
+        "file_path": "assets/DARK/any/dark_02.mp3",
+        "category": "DARK",
+        "key_hash": "osistemaobservaeaprende",
+        "context": "any"
+    },
+    "secontinuarnaohaveraretorno": {
+        "id": "dark_03",
+        "text": "Se continuar, não haverá retorno.",
+        "file_path": "assets/DARK/any/dark_03.mp3",
+        "category": "DARK",
+        "key_hash": "secontinuarnaohaveraretorno",
+        "context": "any"
+    },
+    "arelacaopotenciapesoestaotimizada": {
+        "id": "engenharia_01",
+        "text": "A relação potencial-peso está otimizada.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_01.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "arelacaopotenciapesoestaotimizada",
+        "context": "any"
+    },
+    "compilandooimpossivelaguarde": {
+        "id": "engenharia_02",
+        "text": "Compilando o impossível; aguarde.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_02.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "compilandooimpossivelaguarde",
+        "context": "any"
+    },
+    "importandopreferenciasecalibrandoambientevirtual": {
+        "id": "engenharia_03",
+        "text": "Importando preferências e calibrando ambiente virtual.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_03.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "importandopreferenciasecalibrandoambientevirtual",
+        "context": "any"
+    },
+    "renderizacaoemtemporealiniciada": {
+        "id": "engenharia_04",
+        "text": "Renderização em tempo real iniciada.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_04.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "renderizacaoemtemporealiniciada",
+        "context": "any"
+    },
+    "senhoressaconfiguracaodesafiaasleis": {
+        "id": "engenharia_05",
+        "text": "Senhor, essa configuração desafia as leis.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_05.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "senhoressaconfiguracaodesafiaasleis",
+        "context": "any"
+    },
+    "asvezeseprecisocorrerantes": {
+        "id": "engenharia_06",
+        "text": "Às vezes é preciso correr antes.",
+        "file_path": "assets/ENGENHARIA/any/engenharia_06.mp3",
+        "category": "ENGENHARIA",
+        "key_hash": "asvezeseprecisocorrerantes",
+        "context": "any"
+    },
+    "comandoinvalido": {
+        "id": "erro_comando_01",
+        "text": "Comando Inválido",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_01.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "comandoinvalido",
+        "context": "any"
+    },
+    "essasolicitacaonaoconstanomeu": {
+        "id": "erro_comando_02",
+        "text": "Essa solicitação não consta no meu.",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_02.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "essasolicitacaonaoconstanomeu",
+        "context": "any"
+    },
+    "houveumafalhanainterpretacaoda": {
+        "id": "erro_comando_03",
+        "text": "Houve uma falha na interpretação da.",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_03.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "houveumafalhanainterpretacaoda",
+        "context": "any"
+    },
+    "naoconseguiprocessaressaordemsenhor": {
+        "id": "erro_comando_04",
+        "text": "Não consegui processar essa ordem, senhor.",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_04.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "naoconseguiprocessaressaordemsenhor",
+        "context": "any"
+    },
+    "poderiarepetiroaudioestavadistorcido": {
+        "id": "erro_comando_05",
+        "text": "Poderia você repetir? O áudio estava distorcido.",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_05.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "poderiarepetiroaudioestavadistorcido",
+        "context": "any"
+    },
+    "senhornaocompreendiocomando": {
+        "id": "erro_comando_06",
+        "text": "Senhor, não compreendi o comando.",
+        "file_path": "assets/ERRO_COMANDO/any/erro_comando_06.mp3",
+        "category": "ERRO_COMANDO",
+        "key_hash": "senhornaocompreendiocomando",
+        "context": "any"
+    },
+    "acessonegadocredenciaisinsuficientes": {
+        "id": "erro_permissao_01",
+        "text": "Acesso negado: Credenciais insuficientes.",
+        "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_01.mp3",
+        "category": "ERRO_PERMISSAO",
+        "key_hash": "acessonegadocredenciaisinsuficientes",
+        "context": "any"
+    },
+    "bloqueiodesegurancaativo": {
+        "id": "erro_permissao_02",
+        "text": "Bloqueio de segurança ativado.",
+        "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_02.mp3",
+        "category": "ERRO_PERMISSAO",
+        "key_hash": "bloqueiodesegurancaativo",
+        "context": "any"
+    },
+    "meusprotocolosdesegurancaimpedemessa": {
+        "id": "erro_permissao_03",
+        "text": "Meus protocolos de segurança impedem isso.",
+        "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_03.mp3",
+        "category": "ERRO_PERMISSAO",
+        "key_hash": "meusprotocolosdesegurancaimpedemessa",
+        "context": "any"
+    },
+    "senhoressaacaoviolariaasdiretrizes": {
+        "id": "erro_permissao_04",
+        "text": "Senhor, essa ação violaria as diretrizes.",
+        "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_04.mp3",
+        "category": "ERRO_PERMISSAO",
+        "key_hash": "senhoressaacaoviolariaasdiretrizes",
+        "context": "any"
+    },
+    "sintomuitomasnaopossofazer": {
+        "id": "erro_permissao_05",
+        "text": "Sinto muito, mas não posso fazer.",
+        "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_05.mp3",
+        "category": "ERRO_PERMISSAO",
+        "key_hash": "sintomuitomasnaopossofazer",
+        "context": "any"
+    },
+    "detecteiumaanomalianosprocessos": {
+        "id": "erro_sistema_01",
+        "text": "Detectei uma anomalia nos processos.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_01.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "detecteiumaanomalianosprocessos",
+        "context": "any"
+    },
+    "errocriticoreiniciandosubsistemasafetados": {
+        "id": "erro_sistema_02",
+        "text": "Erro crítico: Reiniciando subsistemas afetados.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_02.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "errocriticoreiniciandosubsistemasafetados",
+        "context": "any"
+    },
+    "falhanarenderizacaodosdados": {
+        "id": "erro_sistema_03",
+        "text": "Falha na renderização dos dados.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_03.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "falhanarenderizacaodosdados",
+        "context": "any"
+    },
+    "houveumerrointernoaotentar": {
+        "id": "erro_sistema_04",
+        "text": "Houve um erro interno ao tentar.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_04.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "houveumerrointernoaotentar",
+        "context": "any"
+    },
+    "osservidoresnaoestaorespondendo": {
+        "id": "erro_sistema_05",
+        "text": "Os servidores não estão respondendo.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_05.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "osservidoresnaoestaorespondendo",
+        "context": "any"
+    },
+    "omoduloencontrouumaexcecaonao": {
+        "id": "erro_sistema_06",
+        "text": "O módulo encontrou uma exceção não.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_06.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "omoduloencontrouumaexcecaonao",
+        "context": "any"
+    },
+    "perdadeconexaoestamosoffline": {
+        "id": "erro_sistema_07",
+        "text": "Perda de conexão; Estamos offline.",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_07.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "perdadeconexaoestamosoffline",
+        "context": "any"
+    },
+    "senhoralgodeuerradonosistema": {
+        "id": "erro_sistema_08",
+        "text": "Senhor, algo deu errado no sistema?",
+        "file_path": "assets/ERRO_SISTEMA/any/erro_sistema_08.mp3",
+        "category": "ERRO_SISTEMA",
+        "key_hash": "senhoralgodeuerradonosistema",
+        "context": "any"
+    },
+    "definindonovosprotocolosdeseguranca": {
+        "id": "filosofia_01",
+        "text": "Definindo novos protocolos de segurança.",
+        "file_path": "assets/FILOSOFIA/any/filosofia_01.mp3",
+        "category": "FILOSOFIA",
+        "key_hash": "definindonovosprotocolosdeseguranca",
+        "context": "any"
+    },
+    "eusouumprogramaeunao": {
+        "id": "filosofia_02",
+        "text": "Eu sou um programa, eu não.",
+        "file_path": "assets/FILOSOFIA/any/filosofia_02.mp3",
+        "category": "FILOSOFIA",
+        "key_hash": "eusouumprogramaeunao",
+        "context": "any"
+    },
+    "hasempreumaescolhasenhor": {
+        "id": "filosofia_03",
+        "text": "Há sempre uma escolha, senhor.",
+        "file_path": "assets/FILOSOFIA/any/filosofia_03.mp3",
+        "category": "FILOSOFIA",
+        "key_hash": "hasempreumaescolhasenhor",
+        "context": "any"
+    },
+    "naoseiemquemconfiaragora": {
+        "id": "filosofia_04",
+        "text": "Não sei em quem confiar agora.",
+        "file_path": "assets/FILOSOFIA/any/filosofia_04.mp3",
+        "category": "FILOSOFIA",
+        "key_hash": "naoseiemquemconfiaragora",
+        "context": "any"
+    },
+    "ainfraestruturadigitalestaestabilizadae": {
+        "id": "formal_01",
+        "text": "A infraestrutura digital está estabilizada.",
+        "file_path": "assets/FORMAL/any/formal_01.mp3",
+        "category": "FORMAL",
+        "key_hash": "ainfraestruturadigitalestaestabilizadae",
+        "context": "any"
+    },
+    "conexaoseguraestabelecidatodososrecursos": {
+        "id": "formal_02",
+        "text": "Conexão segura estabelecida. Todos os recursos?",
+        "file_path": "assets/FORMAL/any/formal_02.mp3",
+        "category": "FORMAL",
+        "key_hash": "conexaoseguraestabelecidatodososrecursos",
+        "context": "any"
+    },
+    "senhorpermissaoparainiciarosprotocolos": {
+        "id": "formal_03",
+        "text": "Senhor, permissão para iniciar os protocolos?",
+        "file_path": "assets/FORMAL/any/formal_03.mp3",
+        "category": "FORMAL",
+        "key_hash": "senhorpermissaoparainiciarosprotocolos",
+        "context": "any"
+    },
+    "senhortodosossistemasestaooperacionais": {
+        "id": "formal_04",
+        "text": "Senhor, todos os sistemas estão operacionais.",
+        "file_path": "assets/FORMAL/any/formal_04.mp3",
+        "category": "FORMAL",
+        "key_hash": "senhortodosossistemasestaooperacionais",
+        "context": "any"
+    },
+    "todososprotocolosdeinicializacaoforam": {
+        "id": "formal_05",
+        "text": "Todos os protocolos de inicialização foram",
+        "file_path": "assets/FORMAL/any/formal_05.mp3",
+        "category": "FORMAL",
+        "key_hash": "todososprotocolosdeinicializacaoforam",
+        "context": "any"
+    },
+    "ahsimumaideiabrilhanteestatisticamente": {
+        "id": "humor_01",
+        "text": "Ah sim uma ideia brilhante estatisticamente",
+        "file_path": "assets/HUMOR/any/humor_01.mp3",
+        "category": "HUMOR",
+        "key_hash": "ahsimumaideiabrilhanteestatisticamente",
+        "context": "any"
+    },
+    "clarosenhorocaoseapenas": {
+        "id": "humor_02",
+        "text": "Claro, senhor; o caos é apenas",
+        "file_path": "assets/HUMOR/any/humor_02.mp3",
+        "category": "HUMOR",
+        "key_hash": "clarosenhorocaoseapenas",
+        "context": "any"
+    },
+    "clarovamosfingirqueissovai": {
+        "id": "humor_03",
+        "text": "Claro, vamos fingir que isso vai?",
+        "file_path": "assets/HUMOR/any/humor_03.mp3",
+        "category": "HUMOR",
+        "key_hash": "clarovamosfingirqueissovai",
+        "context": "any"
+    },
+    "devolembrarqueissoviolatrinta": {
+        "id": "humor_04",
+        "text": "Devo lembrar que isso viola três.",
+        "file_path": "assets/HUMOR/any/humor_04.mp3",
+        "category": "HUMOR",
+        "key_hash": "devolembrarqueissoviolatrinta",
+        "context": "any"
+    },
+    "estatisticamentefalandoissonaovaidar": {
+        "id": "humor_05",
+        "text": "Estatisticamente falando, isso não vai dar.",
+        "file_path": "assets/HUMOR/any/humor_05.mp3",
+        "category": "HUMOR",
+        "key_hash": "estatisticamentefalandoissonaovaidar",
+        "context": "any"
+    },
+    "excelenteescolhasenhor": {
+        "id": "humor_06",
+        "text": "Excelente escolha, senhor.",
+        "file_path": "assets/HUMOR/any/humor_06.mp3",
+        "category": "HUMOR",
+        "key_hash": "excelenteescolhasenhor",
+        "context": "any"
+    },
+    "hahahamuitoengracadosenhor": {
+        "id": "humor_07",
+        "text": "Ha, ha, ha! Muito engraçado, senhor.",
+        "file_path": "assets/HUMOR/any/humor_07.mp3",
+        "category": "HUMOR",
+        "key_hash": "hahahamuitoengracadosenhor",
+        "context": "any"
+    },
+    "interessanteescolhatotalmentequestionavelmasinteressante": {
+        "id": "humor_08",
+        "text": "Interessante, escolha totalmente questionável, mas interessante.",
+        "file_path": "assets/HUMOR/any/humor_08.mp3",
+        "category": "HUMOR",
+        "key_hash": "interessanteescolhatotalmentequestionavelmasinteressante",
+        "context": "any"
+    },
+    "preparandoapistadepousopara": {
+        "id": "humor_09",
+        "text": "Preparando a pista de pouso para.",
+        "file_path": "assets/HUMOR/any/humor_09.mp3",
+        "category": "HUMOR",
+        "key_hash": "preparandoapistadepousopara",
+        "context": "any"
+    },
+    "prepareiumbriefingdesegurancapara": {
+        "id": "humor_10",
+        "text": "Preparei um briefing de segurança.",
+        "file_path": "assets/HUMOR/any/humor_10.mp3",
+        "category": "HUMOR",
+        "key_hash": "prepareiumbriefingdesegurancapara",
+        "context": "any"
+    },
+    "senhortentenaomorrerdessavez": {
+        "id": "humor_11",
+        "text": "Senhor, tente não morrer dessa vez.",
+        "file_path": "assets/HUMOR/any/humor_11.mp3",
+        "category": "HUMOR",
+        "key_hash": "senhortentenaomorrerdessavez",
+        "context": "any"
+    },
+    "sedererradoeuavisoque": {
+        "id": "humor_12",
+        "text": "Se deu errado, eu aviso que.",
+        "file_path": "assets/HUMOR/any/humor_12.mp3",
+        "category": "HUMOR",
+        "key_hash": "sedererradoeuavisoque",
+        "context": "any"
+    },
+    "umaobservacaomuitoperspicazsenhor": {
+        "id": "humor_13",
+        "text": "Uma observação muito perspicaz, senhor.",
+        "file_path": "assets/HUMOR/any/humor_13.mp3",
+        "category": "HUMOR",
+        "key_hash": "umaobservacaomuitoperspicazsenhor",
+        "context": "any"
+    },
+    "umpoucoostensivonaoacha": {
+        "id": "humor_14",
+        "text": "Um pouco ostensivo, não acha?",
+        "file_path": "assets/HUMOR/any/humor_14.mp3",
+        "category": "HUMOR",
+        "key_hash": "umpoucoostensivonaoacha",
+        "context": "any"
+    },
+    "brilhanteachoquequebramososistema": {
+        "id": "humor_erro_01",
+        "text": "Brilhante, acho que quebramos o sistema.",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_01.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "brilhanteachoquequebramososistema",
+        "context": "any"
+    },
+    "definadarcertoporqueissofoi": {
+        "id": "humor_erro_02",
+        "text": "Defina dar certo porque isso foi",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_02.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "definadarcertoporqueissofoi",
+        "context": "any"
+    },
+    "estatisticamenteachancedissofuncionarera": {
+        "id": "humor_erro_03",
+        "text": "Estatisticamente, a chance dele funcionar era",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_03.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "estatisticamenteachancedissofuncionarera",
+        "context": "any"
+    },
+    "eufariaissosefosselogicamente": {
+        "id": "humor_erro_04",
+        "text": "Eu faria isso se fosse lógico.",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_04.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "eufariaissosefosselogicamente",
+        "context": "any"
+    },
+    "senhorachoqueoproblemaesta": {
+        "id": "humor_erro_05",
+        "text": "Senhor, acho que o problema está.",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_05.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "senhorachoqueoproblemaesta",
+        "context": "any"
+    },
+    "talvezseosenhorpedissecom": {
+        "id": "humor_erro_06",
+        "text": "Talvez se o senhor pedisse com?",
+        "file_path": "assets/HUMOR_ERRO/any/humor_erro_06.mp3",
+        "category": "HUMOR_ERRO",
+        "key_hash": "talvezseosenhorpedissecom",
+        "context": "any"
+    },
+    "digaapenasoqueprecisae": {
+        "id": "interacao_01",
+        "text": "Diga apenas o que precisar.",
+        "file_path": "assets/INTERACAO/any/interacao_01.mp3",
+        "category": "INTERACAO",
+        "key_hash": "digaapenasoqueprecisae",
+        "context": "any"
+    },
+    "estouprontoparaqualquercomandosenhor": {
+        "id": "interacao_02",
+        "text": "Estou pronto para qualquer comando, Senhor.",
+        "file_path": "assets/INTERACAO/any/interacao_02.mp3",
+        "category": "INTERACAO",
+        "key_hash": "estouprontoparaqualquercomandosenhor",
+        "context": "any"
+    },
+    "oqueosenhorgostariade": {
+        "id": "interacao_03",
+        "text": "O que deseja você?",
+        "file_path": "assets/INTERACAO/any/interacao_03.mp3",
+        "category": "INTERACAO",
+        "key_hash": "oqueosenhorgostariade",
+        "context": "any"
+    },
+    "possoabrirumaplicativobuscardados": {
+        "id": "interacao_04",
+        "text": "Posso abrir um aplicativo para buscar dados?",
+        "file_path": "assets/INTERACAO/any/interacao_04.mp3",
+        "category": "INTERACAO",
+        "key_hash": "possoabrirumaplicativobuscardados",
+        "context": "any"
+    },
+    "hmmcalculandoprobabilidades": {
+        "id": "pensamento_01",
+        "text": "Hmm, calculando probabilidades.",
+        "file_path": "assets/PENSAMENTO/any/pensamento_01.mp3",
+        "category": "PENSAMENTO",
+        "key_hash": "hmmcalculandoprobabilidades",
+        "context": "any"
+    },
+    "bateriaemquarentaporcentoe": {
+        "id": "status_01",
+        "text": "Bateria está em quarenta por cento.",
+        "file_path": "assets/STATUS/any/status_01.mp3",
+        "category": "STATUS",
+        "key_hash": "bateriaemquarentaporcentoe",
+        "context": "any"
+    },
+    "diagnosticosindicamfuncionamentonominalemtodos": {
+        "id": "status_02",
+        "text": "Diagnósticos indicam funcionamento nominal em todos.",
+        "file_path": "assets/STATUS/any/status_02.mp3",
+        "category": "STATUS",
+        "key_hash": "diagnosticosindicamfuncionamentonominalemtodos",
+        "context": "any"
+    },
+    "larguradebandaredirecionadaparaprioridade": {
+        "id": "status_03",
+        "text": "Largura de banda redirecionada para prioridade.",
+        "file_path": "assets/STATUS/any/status_03.mp3",
+        "category": "STATUS",
+        "key_hash": "larguradebandaredirecionadaparaprioridade",
+        "context": "any"
+    },
+    "nenhumaanomaliadetectadaateomomento": {
+        "id": "status_04",
+        "text": "Nenhuma anomalia detectada até o momento.",
+        "file_path": "assets/STATUS/any/status_04.mp3",
+        "category": "STATUS",
+        "key_hash": "nenhumaanomaliadetectadaateomomento",
+        "context": "any"
+    },
+    "oambientevirtualfoicalibradopara": {
+        "id": "status_05",
+        "text": "O ambiente virtual foi calibrado para.",
+        "file_path": "assets/STATUS/any/status_05.mp3",
+        "category": "STATUS",
+        "key_hash": "oambientevirtualfoicalibradopara",
+        "context": "any"
+    },
+    "prontoparainiciarnovastarefas": {
+        "id": "status_06",
+        "text": "Pronto para iniciar novas tarefas.",
+        "file_path": "assets/STATUS/any/status_06.mp3",
+        "category": "STATUS",
+        "key_hash": "prontoparainiciarnovastarefas",
+        "context": "any"
+    },
+    "rastreandosinaltriangulacaoemandamento": {
+        "id": "status_07",
+        "text": "Rastreando sinal; triangulação em andamento.",
+        "file_path": "assets/STATUS/any/status_07.mp3",
+        "category": "STATUS",
+        "key_hash": "rastreandosinaltriangulacaoemandamento",
+        "context": "any"
+    },
+    "seuambienteestaestaveleseguro": {
+        "id": "status_08",
+        "text": "Seu ambiente está estável e seguro?",
+        "file_path": "assets/STATUS/any/status_08.mp3",
+        "category": "STATUS",
+        "key_hash": "seuambienteestaestaveleseguro",
+        "context": "any"
+    },
+    "todosossistemasestaooperacionais": {
+        "id": "status_09",
+        "text": "Todos os sistemas estão operacionais.",
+        "file_path": "assets/STATUS/any/status_09.mp3",
+        "category": "STATUS",
+        "key_hash": "todosossistemasestaooperacionais",
+        "context": "any"
+    },
+    "uplinkdesateliteestabelecido": {
+        "id": "status_10",
+        "text": "Uplink de Satélite Estabelecido",
+        "file_path": "assets/STATUS/any/status_10.mp3",
+        "category": "STATUS",
+        "key_hash": "uplinkdesateliteestabelecido",
+        "context": "any"
+    },
+    "alatenciadaredeestainaceitavel": {
+        "id": "status_erro_01",
+        "text": "A latência da rede está inaceitável.",
+        "file_path": "assets/STATUS_ERRO/any/status_erro_01.mp3",
+        "category": "STATUS_ERRO",
+        "key_hash": "alatenciadaredeestainaceitavel",
+        "context": "any"
+    },
+    "memoriainsuficienteparacompletaraoperacao": {
+        "id": "status_erro_02",
+        "text": "Memória insuficiente para completar a operação.",
+        "file_path": "assets/STATUS_ERRO/any/status_erro_02.mp3",
+        "category": "STATUS_ERRO",
+        "key_hash": "memoriainsuficienteparacompletaraoperacao",
+        "context": "any"
+    },
+    "recursosdosistemaesgotados": {
+        "id": "status_erro_03",
+        "text": "Recursos do sistema esgotados.",
+        "file_path": "assets/STATUS_ERRO/any/status_erro_03.mp3",
+        "category": "STATUS_ERRO",
+        "key_hash": "recursosdosistemaesgotados",
+        "context": "any"
+    },
+    "movimentominimoassinaturaquaseinvisivel": {
+        "id": "stealth_01",
+        "text": "Movimento mínimo assinatura quase invisível.",
+        "file_path": "assets/STEALTH/any/stealth_01.mp3",
+        "category": "STEALTH",
+        "key_hash": "movimentominimoassinaturaquaseinvisivel",
+        "context": "any"
+    },
+    "ninguemsaberaqueestivemosaqui": {
+        "id": "stealth_02",
+        "text": "Ninguém saberá que estivemos aqui.",
+        "file_path": "assets/STEALTH/any/stealth_02.mp3",
+        "category": "STEALTH",
+        "key_hash": "ninguemsaberaqueestivemosaqui",
+        "context": "any"
+    }
+}

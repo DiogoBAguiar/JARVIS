@@ -96,9 +96,9 @@ class JarvisKernel:
             except Exception as e:
                 self.log.critical(f"Falha ao iniciar {system}: {e}")
         
-        # Notifica que está pronto
-        time.sleep(1)
-        bus.publicar(Evento(nome=Eventos.FALAR, dados={"texto": "Sistemas online."}))
+        # [REMOVIDO] A fala inicial "Sistemas online" foi removida daqui.
+        # Agora quem fala é o api.py com a frase "Pro" [[BOAS_VINDAS]].
+        
         self.log.info("✅ KERNEL OPERACIONAL (Modo Não-Bloqueante).")
 
     def shutdown(self):
