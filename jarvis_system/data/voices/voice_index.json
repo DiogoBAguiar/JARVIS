@@ -55,12 +55,12 @@
         "key_hash": "senhornaovamosconseguir",
         "context": "any"
     },
-    "superaquecimentoiminenterecomendocautela": {
+    "superacaoiminenterecomendocautela": {
         "id": "alerta_08",
         "text": "Superação iminente, recomendo cautela.",
         "file_path": "assets/ALERTA/any/alerta_08.mp3",
         "category": "ALERTA",
-        "key_hash": "superaquecimentoiminenterecomendocautela",
+        "key_hash": "superacaoiminenterecomendocautela",
         "context": "any"
     },
     "bemvindodevolta": {
@@ -72,7 +72,7 @@
         "context": "any",
         "sub_context": "return"
     },
-    "bemvindodevoltasenhorsentisuanoslogs": {
+    "bemvindodevoltasenhorsentisuafaltanoslogs": {
         "id": "boas_vindas_02",
         "text": "Bem-vindo de volta, Senhor. Senti sua falta nos logs.",
         "file_path": "assets/BOAS_VINDAS/any/return/boas_vindas_02.mp3",
@@ -81,23 +81,26 @@
         "context": "any",
         "sub_context": "return"
     },
-    "boanoitepossoauxilialocomalgo": {
+    "boanoitepossoauxilialocomalgoantesdodescanso": {
         "id": "boas_vindas_03",
-        "text": "Boa noite, posso auxiliá-lo com algo?",
+        "text": "Boa noite, posso auxiliá-lo com algo antes do descanso ?",
+        "text_api": "Boa noite, posso auxiliá-lo com algo antes do descanso ?",
         "file_path": "assets/BOAS_VINDAS/night/query/boas_vindas_03.mp3",
         "category": "BOAS_VINDAS",
-        "key_hash": "boanoitepossoauxilialocomalgoantesdodescanso?",
+        "key_hash": "boanoitepossoauxilialocomalgoantesdodescanso",
         "context": "night",
-        "sub_context": "query"
+        "sub_context": "query",
+        "emotion": "sincere"
     },
-    "boanoitesenhordesejarevisaralgo": {
+    "boanoitesenhordesejarevisaralgoantesdeencerrarodia": {
         "id": "boas_vindas_04",
-        "text": "Boa noite, Senhor. Deseja revisar algo?",
+        "text": "Boa noite, Senhor. Deseja revisar algo antes de encerrar o dia ?",
         "file_path": "assets/BOAS_VINDAS/night/query/boas_vindas_04.mp3",
         "category": "BOAS_VINDAS",
         "key_hash": "boanoitesenhordesejarevisaralgoantesdeencerrarodia",
         "context": "night",
-        "sub_context": "query"
+        "sub_context": "query",
+        "emotion": "sincere"
     },
     "boatardesenhoremquepossoajudaloagora": {
         "id": "boas_vindas_05",
@@ -230,12 +233,12 @@
         "key_hash": "zonahostilconfirmada",
         "context": "any"
     },
-    "comodesejariniciandoprocedimento": {
+    "comodesejoiniciarprocedimento": {
         "id": "confirmacao_01",
         "text": "Como desejo iniciar procedimento?",
         "file_path": "assets/CONFIRMACAO/any/confirmacao_01.mp3",
         "category": "CONFIRMACAO",
-        "key_hash": "comodesejariniciandoprocedimento",
+        "key_hash": "comodesejoiniciarprocedimento",
         "context": "any"
     },
     "entendidosenhorexecutandoagora": {
@@ -310,12 +313,12 @@
         "key_hash": "secontinuarnaohaveraretorno",
         "context": "any"
     },
-    "arelacaopotenciapesoestaotimizada": {
+    "arelacaopotencialpesoestaotimizada": {
         "id": "engenharia_01",
         "text": "A relação potencial-peso está otimizada.",
         "file_path": "assets/ENGENHARIA/any/engenharia_01.mp3",
         "category": "ENGENHARIA",
-        "key_hash": "arelacaopotenciapesoestaotimizada",
+        "key_hash": "arelacaopotencialpesoestaotimizada",
         "context": "any"
     },
     "compilandooimpossivelaguarde": {
@@ -390,12 +393,12 @@
         "key_hash": "naoconseguiprocessaressaordemsenhor",
         "context": "any"
     },
-    "poderiarepetiroaudioestavadistorcido": {
+    "poderiavocerepetiroaudioestavadistorcido": {
         "id": "erro_comando_05",
         "text": "Poderia você repetir? O áudio estava distorcido.",
         "file_path": "assets/ERRO_COMANDO/any/erro_comando_05.mp3",
         "category": "ERRO_COMANDO",
-        "key_hash": "poderiarepetiroaudioestavadistorcido",
+        "key_hash": "poderiavocerepetiroaudioestavadistorcido",
         "context": "any"
     },
     "senhornaocompreendiocomando": {
@@ -414,20 +417,20 @@
         "key_hash": "acessonegadocredenciaisinsuficientes",
         "context": "any"
     },
-    "bloqueiodesegurancaativo": {
+    "bloqueiodesegurancaativado": {
         "id": "erro_permissao_02",
         "text": "Bloqueio de segurança ativado.",
         "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_02.mp3",
         "category": "ERRO_PERMISSAO",
-        "key_hash": "bloqueiodesegurancaativo",
+        "key_hash": "bloqueiodesegurancaativado",
         "context": "any"
     },
-    "meusprotocolosdesegurancaimpedemessa": {
+    "meusprotocolosdesegurancaimpedemisso": {
         "id": "erro_permissao_03",
         "text": "Meus protocolos de segurança impedem isso.",
         "file_path": "assets/ERRO_PERMISSAO/any/erro_permissao_03.mp3",
         "category": "ERRO_PERMISSAO",
-        "key_hash": "meusprotocolosdesegurancaimpedemessa",
+        "key_hash": "meusprotocolosdesegurancaimpedemisso",
         "context": "any"
     },
     "senhoressaacaoviolariaasdiretrizes": {
@@ -542,12 +545,12 @@
         "key_hash": "naoseiemquemconfiaragora",
         "context": "any"
     },
-    "ainfraestruturadigitalestaestabilizadae": {
+    "ainfraestruturadigitalestaestabilizada": {
         "id": "formal_01",
         "text": "A infraestrutura digital está estabilizada.",
         "file_path": "assets/FORMAL/any/formal_01.mp3",
         "category": "FORMAL",
-        "key_hash": "ainfraestruturadigitalestaestabilizadae",
+        "key_hash": "ainfraestruturadigitalestaestabilizada",
         "context": "any"
     },
     "conexaoseguraestabelecidatodososrecursos": {
@@ -606,12 +609,12 @@
         "key_hash": "clarovamosfingirqueissovai",
         "context": "any"
     },
-    "devolembrarqueissoviolatrinta": {
+    "devolembrarqueissoviolatres": {
         "id": "humor_04",
         "text": "Devo lembrar que isso viola três.",
         "file_path": "assets/HUMOR/any/humor_04.mp3",
         "category": "HUMOR",
-        "key_hash": "devolembrarqueissoviolatrinta",
+        "key_hash": "devolembrarqueissoviolatres",
         "context": "any"
     },
     "estatisticamentefalandoissonaovaidar": {
@@ -654,12 +657,12 @@
         "key_hash": "preparandoapistadepousopara",
         "context": "any"
     },
-    "prepareiumbriefingdesegurancapara": {
+    "prepareiumbriefingdeseguranca": {
         "id": "humor_10",
         "text": "Preparei um briefing de segurança.",
         "file_path": "assets/HUMOR/any/humor_10.mp3",
         "category": "HUMOR",
-        "key_hash": "prepareiumbriefingdesegurancapara",
+        "key_hash": "prepareiumbriefingdeseguranca",
         "context": "any"
     },
     "senhortentenaomorrerdessavez": {
@@ -670,12 +673,12 @@
         "key_hash": "senhortentenaomorrerdessavez",
         "context": "any"
     },
-    "sedererradoeuavisoque": {
+    "sedeuerradoeuavisoque": {
         "id": "humor_12",
         "text": "Se deu errado, eu aviso que.",
         "file_path": "assets/HUMOR/any/humor_12.mp3",
         "category": "HUMOR",
-        "key_hash": "sedererradoeuavisoque",
+        "key_hash": "sedeuerradoeuavisoque",
         "context": "any"
     },
     "umaobservacaomuitoperspicazsenhor": {
@@ -710,20 +713,20 @@
         "key_hash": "definadarcertoporqueissofoi",
         "context": "any"
     },
-    "estatisticamenteachancedissofuncionarera": {
+    "estatisticamenteachancedelefuncionarera": {
         "id": "humor_erro_03",
         "text": "Estatisticamente, a chance dele funcionar era",
         "file_path": "assets/HUMOR_ERRO/any/humor_erro_03.mp3",
         "category": "HUMOR_ERRO",
-        "key_hash": "estatisticamenteachancedissofuncionarera",
+        "key_hash": "estatisticamenteachancedelefuncionarera",
         "context": "any"
     },
-    "eufariaissosefosselogicamente": {
+    "eufariaissosefosselogico": {
         "id": "humor_erro_04",
         "text": "Eu faria isso se fosse lógico.",
         "file_path": "assets/HUMOR_ERRO/any/humor_erro_04.mp3",
         "category": "HUMOR_ERRO",
-        "key_hash": "eufariaissosefosselogicamente",
+        "key_hash": "eufariaissosefosselogico",
         "context": "any"
     },
     "senhorachoqueoproblemaesta": {
@@ -742,12 +745,12 @@
         "key_hash": "talvezseosenhorpedissecom",
         "context": "any"
     },
-    "digaapenasoqueprecisae": {
+    "digaapenasoqueprecisar": {
         "id": "interacao_01",
         "text": "Diga apenas o que precisar.",
         "file_path": "assets/INTERACAO/any/interacao_01.mp3",
         "category": "INTERACAO",
-        "key_hash": "digaapenasoqueprecisae",
+        "key_hash": "digaapenasoqueprecisar",
         "context": "any"
     },
     "estouprontoparaqualquercomandosenhor": {
@@ -758,20 +761,20 @@
         "key_hash": "estouprontoparaqualquercomandosenhor",
         "context": "any"
     },
-    "oqueosenhorgostariade": {
+    "oquedesejavoce": {
         "id": "interacao_03",
         "text": "O que deseja você?",
         "file_path": "assets/INTERACAO/any/interacao_03.mp3",
         "category": "INTERACAO",
-        "key_hash": "oqueosenhorgostariade",
+        "key_hash": "oquedesejavoce",
         "context": "any"
     },
-    "possoabrirumaplicativobuscardados": {
+    "possoabrirumaplicativoparabuscardados": {
         "id": "interacao_04",
         "text": "Posso abrir um aplicativo para buscar dados?",
         "file_path": "assets/INTERACAO/any/interacao_04.mp3",
         "category": "INTERACAO",
-        "key_hash": "possoabrirumaplicativobuscardados",
+        "key_hash": "possoabrirumaplicativoparabuscardados",
         "context": "any"
     },
     "hmmcalculandoprobabilidades": {
@@ -782,12 +785,12 @@
         "key_hash": "hmmcalculandoprobabilidades",
         "context": "any"
     },
-    "bateriaemquarentaporcentoe": {
+    "bateriaestaemquarentaporcento": {
         "id": "status_01",
         "text": "Bateria está em quarenta por cento.",
         "file_path": "assets/STATUS/any/status_01.mp3",
         "category": "STATUS",
-        "key_hash": "bateriaemquarentaporcentoe",
+        "key_hash": "bateriaestaemquarentaporcento",
         "context": "any"
     },
     "diagnosticosindicamfuncionamentonominalemtodos": {
@@ -901,5 +904,116 @@
         "category": "STEALTH",
         "key_hash": "ninguemsaberaqueestivemosaqui",
         "context": "any"
+    },
+    "poisnaosenhor": {
+        "id": "interacao_05",
+        "text": "Pois não, senhor.",
+        "file_path": "assets/INTERACAO/any/passive/interacao_05.mp3",
+        "category": "INTERACAO",
+        "key_hash": "poisnaosenhor",
+        "context": "any",
+        "sub_context": "passive",
+        "emotion": "helpful"
+    },
+    "bomdiasenhorestouprontoparamaisumdiadeconquistas": {
+        "id": "boas_vindas_16",
+        "text": "Bom dia , Senhor ! Estou pronto para mais um dia de conquistas .",
+        "file_path": "assets/BOAS_VINDAS/morning/passive/boas_vindas_16.mp3",
+        "category": "BOAS_VINDAS",
+        "key_hash": "bomdiasenhorestouprontoparamaisumdiadeconquistas",
+        "context": "morning",
+        "sub_context": "passive",
+        "emotion": "confident"
+    },
+    "suaagendaestalimpaporenquanto": {
+        "id": "sistema_001",
+        "text": "Sua agente está limpa, por enquanto.",
+        "file_path": "assets/SISTEMA/any/status/sistema_status_001.mp3",
+        "category": "SISTEMA",
+        "key_hash": "suaagendaestalimpaporenquanto",
+        "context": "any",
+        "sub_context": "status",
+        "emotion": "serious"
+    },
+    "aduvidanaocombinacomquemlidera": {
+        "id": "dark_04",
+        "text": "A duvida nao combina com quem lidera",
+        "file_path": "assets/DARK/any/storytelling/dark_04.mp3",
+        "category": "DARK",
+        "key_hash": "aduvidanaocombinacomquemlidera",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "serious"
+    },
+    "curiosoosenhorchamarissodeplano": {
+        "id": "humor_15",
+        "text": "curioso o senhor chamar isso de plano",
+        "file_path": "assets/HUMOR/any/storytelling/humor_15.mp3",
+        "category": "HUMOR",
+        "key_hash": "curiosoosenhorchamarissodeplano",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "amused"
+    },
+    
+    "vocejasuperoudesafiosmaioresdoqueeste": {
+        "id": "formal_06",
+        "text": "Voce ja superou desafios maiores do que este",
+        "file_path": "assets/FORMAL/any/storytelling/formal_06.mp3",
+        "category": "FORMAL",
+        "key_hash": "vocejasuperoudesafiosmaioresdoqueeste",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "serious"
+    },
+    "bio_bruna_aguiar": {
+        "id": "dados_03",
+        "text": "Bruna Ozanir Ferreira Martins de Aguiar é a convergência entre sensibilidade e força: percepção aguçada, personalidade marcante e capacidade de leitura emocional do ambiente. Ela não reage ao mundo — ela o interpreta. Seu papel não é seguir rotas prontas, mas ajustar caminhos, influenciar decisões e trazer equilíbrio onde há excesso.",
+        "file_path": "assets/DADOS/any/storytelling/dados_03.mp3",
+        "category": "DADOS",
+        "key_hash": "brunaozanirferreiramartinsdeaguiareaconvergenciaentresensibilidadeeforcapercepcaoagucadapersonalidademarcanteecapacidadedeleituraemocionaldoambienteelanaoreageaomundoelaointerpretaseupapelnaoeseguirrotasprontasmasajustarcaminhosinfluenciardecisoesetrazerrequilibrioondehaexcesso",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "serious"
+    },
+    "bio_caio_aguiar": {
+        "id": "dados_04",
+        "text": "Caio Bruno Ferreira Martins de Aguiar é uma força em expansão: energia, identidade em construção e potencial em movimento. Ele não é apenas parte do sistema — ele é vetor de mudança dentro dele. Suas escolhas ainda estão sendo calibradas, mas sua presença já altera o ambiente, provoca movimento e gera impacto. Onde ele passa, nada permanece exatamente igual.",
+        "file_path": "assets/DADOS/any/storytelling/dados_04.mp3",
+        "category": "DADOS",
+        "key_hash": "caiobrunoferreiramartinsdeaguiareumaforcaemexpansaoenergiaidentidadeemconstrucaoepotencialemmovimentoelecaoeapenaspartedosistemaeleevetordemudancadentrodelesuasescolhasaindaestaosendocalibradasmassuapresencajaalteraoambienteprovocamovimentoegeraimpactoondeelepassanadapermaneceexatamenteigual",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "energetic"
+    },
+    "bio_diogo_aguiar": {
+        "id": "dados_05",
+        "text": "Diogo Aguiar é o núcleo operacional desta estrutura: estrategista em formação, criador de sistemas, arquiteto de ideias e mente orientada a soluções. Ele não apenas consome tecnologia — ele a molda. Cada decisão sua carrega intenção, cada projeto nasce com ambição, e cada erro é convertido em aprendizado. Seu foco não é apenas vencer desafios imediatos, mas construir algo que permaneça, evolua e deixe impacto real no mundo que o cerca.",
+        "file_path": "assets/DADOS/any/storytelling/dados_05.mp3",
+        "category": "DADOS",
+        "key_hash": "diogoaguiareonucleooperacionaldestaestruturaestrategistaemformacaocriadordesistemasarquitetodeideiasementeorientadaasolucoeselecaoeapenasconsumetecnologiaeleamoldacadadecisao",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "confident"
+    },
+    "bio_rodrigo_aguiar": {
+        "id": "dados_06",
+        "text": "Rodrigo Bruno Pereira de Aguiar é a base estrutural desta unidade familiar: referência de estabilidade, disciplina e responsabilidade. Sua trajetória não é marcada por discursos grandiosos, mas por ações consistentes, presença firme e decisões que sustentam mais do que apenas o presente — sustentam o futuro. Ele opera como um pilar silencioso, daqueles que não precisam provar força, porque a própria constância já é a prova.",
+        "file_path": "assets/DADOS/any/storytelling/dados_06.mp3",
+        "category": "DADOS",
+        "key_hash": "rodrigobrunopereiradeaguiareabaseestruturaldestaunidadefamiliarreferenciadeestabilidadedisciplinaeresponsabilidadesuatrayetorianaoemarcadapordiscursosgrandiososmasporacoesconsistentespresencafirmeedecisoesque",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "respectful"
+    },
+    "bio_suenia_martins": {
+        "id": "dados_07",
+        "text": "Suênia Ferreira Martins é o núcleo emocional e estratégico da família: inteligência prática combinada com sensibilidade humana. Ela administra conflitos, protege estruturas frágeis e mantém coesão onde outros veriam apenas caos. Sua influência não é barulhenta, mas é profunda — ela molda destinos mais pelo cuidado e pela visão do que pela imposição.",
+        "file_path": "assets/DADOS/any/storytelling/dados_07.mp3",
+        "category": "DADOS",
+        "key_hash": "sueniaferreiramartinseonucleoemocionaleestrategicodafamiliainteligenciapraticacombinadacomsensibilidadehumanaelaadministraconflitosprotegeestruturasfrageisemantemcoesaoondeoutrosveriamapenascaos",
+        "context": "any",
+        "sub_context": "storytelling",
+        "emotion": "sincere"
     }
 }

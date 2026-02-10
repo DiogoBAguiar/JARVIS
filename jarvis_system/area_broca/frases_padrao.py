@@ -1,80 +1,91 @@
+import json
 import random
+import os
+from datetime import datetime
+from typing import Optional, Dict
 
-# Dicionário com todas as suas frases categorizadas
-FRASES_DO_SISTEMA = {
-    "ALERTA": [
-        "Acesso não autorizado",
-        "Alerta de segurança intrusão detectada",
-        "Alerta de segurança risco detectado",
-        "Atenção formação de gelo em nível",
-        "Atenção senhor algo saiu do previsto",
-        "Recomendo cautela imediata",
-        "Senhor não vamos conseguir",
-        "Superaquecimento iminente recomendo cautela"
-    ],
-    "BOAS_VINDAS": [
-        "Bemvindo de volta",
-        "Bemvindo de volta senhor senti sua",
-        "Boa noite posso auxiliálo com algo",
-        "Boa noite senhor deseja revisar algo",
-        "Boa tarde senhor em que posso",
-        "Boa tarde seus sistemas estão estáveis",
-        "Bom dia senhor o que deseja",
-        "Bom dia senhor todos os sistemas",
-        "Conexão restabelecida aguardando seus comandos",
-        "Em que posso ser útil hoje",
-        "Jarvis online senhor como posso ser útil",  
-        "Pronto para servilo",
-        "Sempre ao seu dispor senhor",
-        "Sessão retomada pronto para continuar de",
-        "É um prazer estar online"
-    ],
-    "COMBATE": [
-        "Alvos adquiridos",
-        "Ativando sistemas de defesa",
-        "Senhor cuidado à esquerda",
-        "Zona hostil confirmada"
-    ],
-    "CONFIRMACAO": [
-        "Como desejar iniciando procedimento",
-        "Entendido senhor executando agora",
-        "Execução concluída com sucesso",
-        "Solicitação recebida processando",
-        "Tarefa em andamento"
-    ],
-    "ERRO_SISTEMA": [
-        "Detectei uma anomalia nos processos",
-        "Erro crítico reiniciando subsistemas afetados",
-        "Falha na renderização dos dados",
-        "Houve um erro interno ao tentar",
-        "Os servidores não estão respondendo",
-        "Perda de conexão estamos offline",
-        "Senhor algo deu errado no sistema"
-    ],
-    "HUMOR": [
-        "Ah sim uma ideia brilhante estatisticamente falando",
-        "Claro senhor o caos é apenas uma variável",
-        "Claro vamos fingir que isso vai dar certo",
-        "Estatisticamente falando isso não vai dar certo",
-        "Excelente escolha senhor",
-        "Ha ha ha muito engraçado senhor",
-        "Se der errado eu aviso que avisei",
-        "Senhor tente não morrer dessa vez"
-    ],
-    "STATUS": [
-        "Bateria em quarenta por cento e caindo",
-        "Diagnósticos indicam funcionamento nominal em todos os setores",
-        "Nenhuma anomalia detectada até o momento",
-        "Pronto para iniciar novas tarefas",
-        "Todos os sistemas estão operacionais"
-    ]
-}
+# --- CONFIGURAÇÃO DE CAMINHOS ---
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+INDEX_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", "jarvis_system", "data", "voices", "voice_index.json"))
 
-def obter_frase(categoria):
-    """Retorna uma frase aleatória da categoria solicitada."""
-    # Remove colchetes se vierem na string (ex: [[ALERTA]] -> ALERTA)
-    clean_cat = categoria.replace("[[", "").replace("]]", "").strip()
+def _carregar_indice() -> Dict:
+    if not os.path.exists(INDEX_PATH):
+        alt_path = os.path.join(os.getcwd(), "jarvis_system", "data", "voices", "voice_index.json")
+        if os.path.exists(alt_path):
+            try:
+                with open(alt_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except: return {}
+        return {}
     
-    if clean_cat in FRASES_DO_SISTEMA:
-        return random.choice(FRASES_DO_SISTEMA[clean_cat])
+    try:
+        with open(INDEX_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Erro ao ler voice_index.json: {e}")
+        return {}
+
+def _get_contexto_temporal() -> str:
+    hora = datetime.now().hour
+    if 5 <= hora < 12: return "morning"
+    elif 12 <= hora < 18: return "afternoon"
+    else: return "night"
+
+def obter_frase(categoria: str, forcar_sub_contexto: str = None) -> Optional[str]:
+    """
+    Seletor Hierárquico com Debug no Console.
+    """
+    clean_cat = categoria.replace("[[", "").replace("]]", "").strip().upper()
+    
+    dados = _carregar_indice()
+    if not dados:
+        print(f"⚠️ [FRASES] Banco de dados vazio ou não encontrado.")
+        return None 
+
+    candidatos_perfeitos = [] # Bate Tempo E Sub-contexto
+    candidatos_genericos = [] # Bate Sub-contexto mas Tempo é "any"
+    
+    contexto_atual = _get_contexto_temporal()
+    
+    # DEBUG: Mostra o que o sistema está buscando
+    print(f"🔍 [SELETOR] Buscando: Cat='{clean_cat}' | Hora='{contexto_atual}' | Sub='{forcar_sub_contexto}'")
+
+    for key, metadata in dados.items():
+        if not isinstance(metadata, dict): continue
+        
+        # 1. Filtro de Categoria
+        if metadata.get("category") != clean_cat:
+            continue
+
+        # 2. Filtro de Sub-contexto (Se solicitado)
+        if forcar_sub_contexto:
+            if metadata.get("sub_context") != forcar_sub_contexto:
+                continue
+
+        texto = metadata.get("text")
+        ctx_frase = metadata.get("context", "any")
+        
+        if not texto: continue
+
+        # Classificação
+        if ctx_frase == contexto_atual:
+            candidatos_perfeitos.append(texto)
+        elif ctx_frase == "any":
+            candidatos_genericos.append(texto)
+
+    # DEBUG: Mostra o resultado da busca
+    print(f"   📊 Encontrados: {len(candidatos_perfeitos)} Perfeitos (Prioridade) | {len(candidatos_genericos)} Genéricos (Fallback)")
+
+    # Lógica de Prioridade:
+    if candidatos_perfeitos:
+        escolhida = random.choice(candidatos_perfeitos)
+        print(f"   ✅ Selecionado (Perfeito): '{escolhida[:30]}...'")
+        return escolhida
+    
+    if candidatos_genericos:
+        escolhida = random.choice(candidatos_genericos)
+        print(f"   ⚠️ Selecionado (Genérico - Fallback): '{escolhida[:30]}...'")
+        return escolhida
+    
+    print("   ❌ Nenhuma frase encontrada.")
     return None
