@@ -25,6 +25,15 @@ try:
 except ImportError:
     Subconsciente = None
 
+try:
+    from jarvis_system.cortex_visual import vision
+except ImportError as e:
+    print(f"⚠️ AVISO: Módulo de Visão não carregado. Motivo: {e}")
+    vision = None
+except Exception as e:
+    print(f"⚠️ AVISO: Erro crítico ao importar Visão: {e}")
+    vision = None
+
 class Subsystem(Protocol):
     def start(self) -> None: ...
     def stop(self) -> None: ...
@@ -47,6 +56,7 @@ class JarvisKernel:
         self.brain = None
         self.mouth = None
         self.ears = None
+        self.eyes = None # NOVO: Olhos
         self._initialized = True
 
     def bootstrap(self):
@@ -74,13 +84,23 @@ class JarvisKernel:
         except Exception as e:
             self.log.critical(f"❌ Falha no Orquestrador: {e}")
 
-        # 3. Registra Sentidos
+        # 3. Registra Sentidos Básicos
         if self.mouth: 
             self.mouth.name = "Sistema de Fala"
             self._register_subsystem(self.mouth)
         if self.ears: 
             self.ears.name = "Sistema Auditivo"
             self._register_subsystem(self.ears)
+
+        # 4. Carrega Visão (NOVO)
+        if vision:
+            try:
+                self.eyes = vision
+                self.eyes.name = "Córtex Visual"
+                self._register_subsystem(self.eyes)
+                self.log.info("👁️ Córtex Visual Acoplado.")
+            except Exception as e:
+                self.log.error(f"❌ Falha ao carregar visão: {e}")
 
         self._setup_event_bus()
 
@@ -95,9 +115,6 @@ class JarvisKernel:
                 system.start()
             except Exception as e:
                 self.log.critical(f"Falha ao iniciar {system}: {e}")
-        
-        # [REMOVIDO] A fala inicial "Sistemas online" foi removida daqui.
-        # Agora quem fala é o api.py com a frase "Pro" [[BOAS_VINDAS]].
         
         self.log.info("✅ KERNEL OPERACIONAL (Modo Não-Bloqueante).")
 

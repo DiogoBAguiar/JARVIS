@@ -13,7 +13,7 @@ try:
     from jarvis_system.cortex_motor.tool_registry import registry
     from jarvis_system.cortex_motor.launcher import launcher 
     from jarvis_system.cortex_frontal.brain_llm import llm 
-    from jarvis_system.cortex_frontal.subconsciente import curiosity
+    from jarvis_system.cortex_frontal.curiosity import curiosity
     from jarvis_system.hipocampo.reflexos import reflexos
 except ImportError:
     registry, launcher, llm, curiosity, reflexos = None, None, None, None, None
