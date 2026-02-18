@@ -2,9 +2,8 @@ from typing import Callable, Dict, Any, Optional
 from dataclasses import dataclass
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
-# --- IMPORTAÇÃO DOS AGENTES ESPECIALISTAS ---
-# Usamos try/except para não quebrar o sistema se o arquivo do agente ainda não existir
-
+# --- IMPORTAÇÃO DOS AGENTES ESPECIALISTAS (LEVES) ---
+# Mantemos no topo apenas os agentes que NÃO usam bibliotecas pesadas (como ChromaDB/Torch)
 try:
     from jarvis_system.agentes_especialistas.agente_calendario import AgenteCalendario
 except ImportError:
@@ -21,14 +20,13 @@ except ImportError:
     AgenteClima = None
 
 try:
-    from jarvis_system.agentes_especialistas.agente_media import AgenteMedia # <--- NOVO
+    from jarvis_system.agentes_especialistas.agente_media import AgenteMedia
 except ImportError:
     AgenteMedia = None
 
-try:
-    from jarvis_system.agentes_especialistas.spotify.agent import AgenteSpotify # <--- NOVO
-except ImportError:
-    AgenteSpotify = None
+# OBS: O AgenteSpotify foi removido daqui para evitar Deadlock no Windows
+# Ele será importado sob demanda dentro da classe ToolRegistry.
+
 # Padronização do nome do logger
 log = JarvisLogger("MOTOR_REGISTRY")
 
@@ -56,15 +54,28 @@ class ToolRegistry:
 
     def _carregar_especialistas(self):
         """Instancia e registra os agentes especialistas disponíveis."""
+        
+        # 1. Lista de Agentes Leves (Importados no topo)
         lista_classes = [
             AgenteCalendario,
             AgenteSistema,
             AgenteClima,
             AgenteMedia,
-            AgenteSpotify,
-            # Adicione futuros agentes aqui: AgenteSpotify...
         ]
 
+        # 2. IMPORTAÇÃO TARDIA (LAZY IMPORT) DO SPOTIFY
+        # Resolve o erro de "Import Lock Deadlock" no Windows com multiprocessing.
+        # Só importamos o módulo pesado quando esta função é executada pelo processo pai.
+        try:
+            from jarvis_system.agentes_especialistas.spotify.agent import AgenteSpotify
+            lista_classes.append(AgenteSpotify)
+            # log.debug("🔧 Módulo Spotify importado com sucesso (Lazy Load).")
+        except ImportError:
+            log.warning("⚠️ Agente Spotify não encontrado ou dependências ausentes.")
+        except Exception as e:
+            log.error(f"❌ Erro ao importar Agente Spotify: {e}")
+
+        # 3. Instanciação e Registro
         for ClasseAgente in lista_classes:
             if ClasseAgente:
                 try:

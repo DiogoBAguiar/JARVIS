@@ -24,13 +24,13 @@ ESTRUTURA SIMPLIFICADA DO PROJETO: J.A.R.V.I.S
 │   │   └── __init__.py
 │   │   ├── noticias/
 │   │   │   ├── agent/
-│   │   │   │   └── config.py
-│   │   │   │   └── manager.py
+│   │   │   │   └── configNewsAgent.py
+│   │   │   │   └── newsAgent.py
 │   │   │   ├── brain/
-│   │   │   │   └── classifier.py
-│   │   │   │   └── core.py
+│   │   │   │   └── intentRouter.py
 │   │   │   │   └── llm_setup_noticias.py
 │   │   │   │   └── mocks.json
+│   │   │   │   └── newsBrain.py
 │   │   │   │   └── prompts.py
 │   │   │   │   └── whatsapp_sender.py
 │   │   │   ├── controller/
@@ -38,19 +38,18 @@ ESTRUTURA SIMPLIFICADA DO PROJETO: J.A.R.V.I.S
 │   │   │   ├── templates/
 │   │   │   │   └── newspaper.html
 │   │   │   ├── tools/
+│   │   │   │   └── newsEngine.py
 │   │   │   │   └── reporter.py
-│   │   │   │   └── search_engine.py
 │   │   │   │   └── sources.json
 │   │   ├── spotify/
 │   │   │   └── LEIA_ME_SPOTIFY.txt
 │   │   │   └── __init__.py
 │   │   │   ├── agent/
-│   │   │   │   └── config.py
-│   │   │   │   └── manager.py
+│   │   │   │   └── agenteSpotify.py
+│   │   │   │   └── configSpotify.py
 │   │   │   │   └── __init__.py
 │   │   │   ├── brain/
 │   │   │   │   └── core.py
-│   │   │   │   └── J.A.R.V.I.S.code-workspace
 │   │   │   │   └── limbic_system.py
 │   │   │   │   └── llm_setup.py
 │   │   │   │   └── tools.py
@@ -108,10 +107,10 @@ ESTRUTURA SIMPLIFICADA DO PROJETO: J.A.R.V.I.S
 │   │   └── frases_padrao.py
 │   │   └── __init__.py
 │   │   ├── listen/
-│   │   │   └── config.py
-│   │   │   └── driver.py
-│   │   │   └── main.py
-│   │   │   └── transcriber.py
+│   │   │   └── audioDriver.py
+│   │   │   └── configAudio.py
+│   │   │   └── ouvidoBiologico.py
+│   │   │   └── whisperTranscriber.py
 │   │   │   └── __init__.py
 │   │   ├── model_en/
 │   │   │   └── README
@@ -150,48 +149,48 @@ ESTRUTURA SIMPLIFICADA DO PROJETO: J.A.R.V.I.S
 │   │   │   │   └── online_cmvn.conf
 │   │   │   │   └── splice.conf
 │   │   ├── speak/
-│   │   │   └── config.py
-│   │   │   └── engine.py
-│   │   │   └── indexer.py
-│   │   │   └── main.py
-│   │   │   └── synthesizer.py
+│   │   │   └── audioEngine.py
+│   │   │   └── configSpeak.py
+│   │   │   └── fishSynthesizer.py
+│   │   │   └── neuralSpeaker.py
+│   │   │   └── voiceIndexer.py
 │   │   │   └── __init__.py
 │   ├── cortex_frontal/
-│   │   └── curiosity.py
+│   │   └── curiosityEngine.py
 │   │   └── observability.py
-│   │   └── voice_director.py
+│   │   └── voiceDirector.py
 │   │   └── __init__.py
 │   │   ├── brain_llm/
 │   │   │   └── config.py
-│   │   │   └── key_manager.py
-│   │   │   └── main.py
-│   │   │   └── prompt_factory.py
-│   │   │   └── providers.py
+│   │   │   └── hybridBrain.py
+│   │   │   └── keyManager.py
+│   │   │   └── localCloudProviders.py
+│   │   │   └── promptFactory.py
 │   │   │   └── __init__.py
 │   │   ├── event_bus/
-│   │   │   └── core.py
+│   │   │   └── eventBus.py
 │   │   │   └── model.py
 │   │   │   └── __init__.py
 │   │   ├── orchestrator/
-│   │   │   └── attention.py
-│   │   │   └── cognition.py
-│   │   │   └── config.py
-│   │   │   └── learning.py
-│   │   │   └── main.py
-│   │   │   └── tools_handler.py
+│   │   │   └── attentionSystem.py
+│   │   │   └── cognitionHandler.py
+│   │   │   └── configOrchestrator.py
+│   │   │   └── learningHandler.py
+│   │   │   └── orchestrator.py
+│   │   │   └── toolsHandler.py
 │   │   │   └── __init__.py
 │   ├── cortex_motor/
-│   │   └── launcher.py
+│   │   └── appLauncher.py
 │   │   └── os_actions.py
 │   │   └── tool_registry.py
 │   │   └── __init__.py
 │   │   ├── camera/
 │   │   │   └── spatial_memory.py
 │   ├── cortex_visual/
-│   │   └── config.py
-│   │   └── eyes.py
+│   │   └── cameraDriver.py
+│   │   └── configVisao.py
+│   │   └── cortexVisual.py
 │   │   └── face_id.py
-│   │   └── main.py
 │   │   └── __init__.py
 │   ├── data/
 │   │   └── (Conteúdo Omitido)
@@ -203,36 +202,36 @@ ESTRUTURA SIMPLIFICADA DO PROJETO: J.A.R.V.I.S
 │   │   └── limpar_memoria.py
 │   │   └── __init__.py
 │   │   ├── memoria/
-│   │   │   └── connection.py
-│   │   │   └── core.py
-│   │   │   └── storage.py
+│   │   │   └── chromaConnection.py
+│   │   │   └── memoriaHipocampo.py
+│   │   │   └── memoryStorage.py
 │   │   │   └── __init__.py
 │   │   ├── pensamento_musical/
-│   │   │   └── core.py
-│   │   │   └── enrichment.py
-│   │   │   └── ingestion.py
-│   │   │   └── maintenance.py
-│   │   │   └── report.py
-│   │   │   └── search.py
+│   │   │   └── curadorMusical.py
+│   │   │   └── musicEnrichment.py
+│   │   │   └── musicMaintenance.py
+│   │   │   └── musicReporter.py
+│   │   │   └── musicSearchEngine.py
+│   │   │   └── spotifyIngestor.py
 │   │   │   └── __init__.py
 │   │   ├── reflexos/
-│   │   │   └── core.py
 │   │   │   └── fuzzy_logic.py
+│   │   │   └── hipocampoReflexos.py
+│   │   │   └── reflexosStorage.py
 │   │   │   └── regex_compiler.py
-│   │   │   └── storage.py
 │   │   │   └── __init__.py
 │   │   ├── subconsciente/
-│   │   │   └── analyzer.py
 │   │   │   └── aprendiz_voz.py
-│   │   │   └── dreamer.py
+│   │   │   └── logAnalyzer.py
 │   │   │   └── log_reader.py
-│   │   │   └── memory.py
+│   │   │   └── subconsciente.py
+│   │   │   └── subconscienteMemory.py
 │   │   │   └── __init__.py
 │   ├── lobo_temporal/
 │   │   └── __init__.py
 │   ├── main/
 │   │   └── api.py
-│   │   └── core.py
+│   │   └── jarvisKernel.py
 │   │   └── __init__.py
 │   ├── utils/
 │   │   └── audio_ingestor.py

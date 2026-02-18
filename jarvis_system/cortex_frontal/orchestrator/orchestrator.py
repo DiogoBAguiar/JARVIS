@@ -1,4 +1,4 @@
-# jarvis_system/cortex_frontal/orchestrator/main.py
+# jarvis_system/cortex_frontal/orchestrator/orchestrator.py
 import time
 import re
 import random
@@ -8,7 +8,7 @@ from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
-# Dependências
+# Dependências Globais
 try:
     from jarvis_system.cortex_motor.tool_registry import registry
     from jarvis_system.cortex_motor.appLauncher import launcher 
@@ -39,17 +39,50 @@ class Orchestrator:
         
         # Barramento
         bus.inscrever(Eventos.FALA_RECONHECIDA, self.process_input)
-        self.log.info("🧠 Córtex Frontal (Modular v4.0) Online.")
+        self.log.info("🧠 Córtex Frontal (Modular v4.0) Instanciado.")
+
+    # -------------------------------------------------------------------------
+    # 🕵️‍♂️ VERIFICAÇÃO REAL DO ESTADO (A CORREÇÃO)
+    # -------------------------------------------------------------------------
+    @property
+    def sistemas_carregados(self) -> bool:
+        """
+        Retorna True APENAS se o registro de ferramentas contiver os especialistas.
+        A API usa isto para decidir se pode liberar a voz.
+        """
+        if not registry:
+            return False
+            
+        # Tenta contar os especialistas de várias formas (dependendo da tua implementação do registry)
+        # Verifica atributos comuns onde os agentes costumam ficar armazenados
+        qtd = 0
+        try:
+            if hasattr(registry, 'agentes'): qtd = len(registry.agentes)
+            elif hasattr(registry, 'drivers'): qtd = len(registry.drivers)
+            elif hasattr(registry, 'ferramentas'): qtd = len(registry.ferramentas)
+            elif hasattr(registry, '_store'): qtd = len(registry._store)
+        except:
+            return False
+
+        # Consideramos 'Carregado' se houver pelo menos 3 especialistas principais
+        # (Ex: Sistema, Spotify, Clima)
+        return qtd >= 3
+
+    # -------------------------------------------------------------------------
 
     def process_input(self, evento: Evento):
+        # Ignora comandos se o sistema ainda não estiver 100% carregado
+        if not self.sistemas_carregados:
+            return
+
         raw_text = evento.dados.get("texto", "")
         if not raw_text: return
 
         # 1. Normalização Básica
         clean_text = re.sub(r'[^\w\s]', '', raw_text.lower()).strip()
-        clean_text = re.sub(r'(.)\1{2,}', r'\1', clean_text) # Remove letras repetidas (oooi)
+        clean_text = re.sub(r'(.)\1{2,}', r'\1', clean_text) 
 
-        # 2. Confirmações Pendentes (Prioridade Máxima)
+        # 2. Confirmações Pendentes
         if self._handle_confirmation(clean_text): return
 
         # 3. Atenção (Wake Word)
@@ -64,19 +97,19 @@ class Orchestrator:
 
         # 4. Pipeline de Execução
         try:
-            # 4.1 Aprendizado Rápido ("Aprenda que X é Y")
+            # 4.1 Aprendizado Rápido
             ok, msg = self.learner.handle(payload)
             if ok:
                 self._speak(msg)
                 return
 
-            # 4.2 Comandos Diretos (Sem LLM - Mais rápido)
+            # 4.2 Comandos Diretos
             ok, msg = self.tools.handle_direct_command(payload)
             if ok:
                 self._speak(msg)
                 return
 
-            # 4.3 Cognição (LLM + JSON)
+            # 4.3 Cognição (LLM)
             response_text, json_action = self.cognitive.process(payload)
             
             if json_action:
@@ -106,10 +139,8 @@ class Orchestrator:
         if ctx["type"] == "app_suggestion":
             self._speak(f"Abrindo {ctx['name']}.")
             if launcher: launcher.abrir_por_caminho(ctx["path"])
-            # Aprende para a próxima vez
             if reflexos: 
                 reflexos.adicionar_correcao(ctx["original_term"], ctx["name"].lower())
-        
         self.pending_context = None
 
     def _execute_json_action(self, action: dict):
@@ -130,5 +161,10 @@ class Orchestrator:
     def _speak(self, text: str):
         bus.publicar(Evento(Eventos.FALAR, {"texto": text}))
 
-    def start(self): pass
-    def stop(self): pass
+    def start(self):
+        # Apenas logamos. A propriedade 'sistemas_carregados' agora faz a verificação real
+        # dinamicamente sempre que a API perguntar.
+        self.log.info("🧠 Córtex Frontal iniciado (Aguardando especialistas...).")
+
+    def stop(self):
+        pass
