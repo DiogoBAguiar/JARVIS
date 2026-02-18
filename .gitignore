@@ -215,3 +215,26 @@ __marimo__/
 msedgedriver.exe
 
 Driver_Notes
+
+# Ignorar modelos de IA pesados
+jarvis_system/area_broca/model_en/
+jarvis_system/area_broca/model_pt/
+
+# Ignorar arquivos de áudio
+*.mp3
+*.wav
+jarvis_system/data/voices/assets/
+
+# Ignorar bancos de dados e memória
+*.sqlite3
+*.db
+*.pickle
+*.bin
+jarvis_system/data/jarvis_memory_db/
+jarvis_system/data/visual_memory/
+
+# Ignorar cache do Python
+__pycache__/
+*.pyc
+.venv/
+env/
