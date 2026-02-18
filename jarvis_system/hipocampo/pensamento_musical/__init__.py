@@ -1,1 +1,1 @@
-from .core import CuradorMusical
+from .curadorMusical import CuradorMusical

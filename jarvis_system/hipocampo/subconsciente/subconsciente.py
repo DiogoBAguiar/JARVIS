@@ -1,9 +1,9 @@
 import os
 import logging
 import random
-from .memory import SubconscienteMemory
+from .subconscienteMemory import SubconscienteMemory
 from .log_reader import LogReader
-from .analyzer import LogAnalyzer
+from .logAnalyzer import LogAnalyzer
 
 # Configuração de Caminhos Automática
 current_dir = os.path.dirname(os.path.abspath(__file__))

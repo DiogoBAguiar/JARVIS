@@ -1,7 +1,7 @@
 # jarvis_system/area_broca/speak/synthesizer.py
 import requests
 import os
-from .config import FISH_AUDIO_API_URL, FISH_API_KEY, FISH_MODEL_ID, FISH_TAGS
+from .configSpeak import FISH_AUDIO_API_URL, FISH_API_KEY, FISH_MODEL_ID, FISH_TAGS
 
 class FishSynthesizer:
     def __init__(self, logger):

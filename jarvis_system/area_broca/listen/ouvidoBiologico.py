@@ -12,9 +12,9 @@ from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
 # Módulos Locais
-from .config import *
-from .driver import AudioDriver
-from .transcriber import WhisperTranscriber
+from .configAudio import *
+from .audioDriver import AudioDriver
+from .whisperTranscriber import WhisperTranscriber
 
 # Configuração de Logs Local
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -1,8 +1,8 @@
 import logging
 import socket
 # ALTERAÇÃO: Conectando direto ao Cérebro V3 para garantir os recursos novos (PDF, Classificador)
-from ..brain.core import NewsBrain
-from . import config
+from ..brain.newsBrain import NewsBrain
+from . import configNewsAgent
 
 logger = logging.getLogger("NEWS_MANAGER")
 
@@ -13,8 +13,8 @@ class NewsAgent:
     """
 
     def __init__(self):
-        self.name = config.AGENT_NAME
-        self.triggers = config.TRIGGERS
+        self.name = configNewsAgent.AGENT_NAME
+        self.triggers = configNewsAgent.TRIGGERS
         self.brain = None # Mudança de Controller para Brain
         self.is_ready = False
         
@@ -22,7 +22,7 @@ class NewsAgent:
         self._inicializar()
 
     def _inicializar(self):
-        logger.info(f"📰 Inicializando {self.name} v{config.VERSION}...")
+        logger.info(f"📰 Inicializando {self.name} v{configNewsAgent.VERSION}...")
         try:
             # Instancia o Cérebro V3 (que carrega o Search Engine, Reporter e LLM)
             self.brain = NewsBrain()

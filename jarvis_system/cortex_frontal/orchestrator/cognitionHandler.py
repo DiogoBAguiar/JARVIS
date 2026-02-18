@@ -2,7 +2,7 @@
 import json
 import re
 import random
-from .config import MEMORY_TRIGGERS
+from .configOrchestrator import MEMORY_TRIGGERS
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
 log = JarvisLogger("ORCH_COG")

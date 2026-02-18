@@ -2,7 +2,7 @@ import cv2
 import threading
 import time
 from jarvis_system.cortex_frontal.observability import JarvisLogger
-from .config import CAMERA_ID, FRAME_WIDTH, FRAME_HEIGHT
+from .configVisao import CAMERA_ID, FRAME_WIDTH, FRAME_HEIGHT
 
 log = JarvisLogger("VISUAL_EYES")
 

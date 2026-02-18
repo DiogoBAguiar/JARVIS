@@ -3,7 +3,7 @@ import cv2
 import face_recognition
 import numpy as np
 from jarvis_system.cortex_frontal.observability import JarvisLogger
-from .config import MEMORY_PATH, TOLERANCE
+from .configVisao import MEMORY_PATH, TOLERANCE
 
 log = JarvisLogger("VISUAL_FACEID")
 

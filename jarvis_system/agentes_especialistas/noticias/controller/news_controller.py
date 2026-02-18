@@ -1,5 +1,5 @@
 import logging
-from ..brain.core import NewsBrain
+from ..brain.newsBrain import NewsBrain
 
 logger = logging.getLogger("NEWS_CONTROLLER")
 

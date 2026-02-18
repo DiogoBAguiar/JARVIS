@@ -4,8 +4,8 @@ import re
 import logging
 from typing import Optional, Dict, Any, List
 
-from .storage import MemoryStorage
-from .connection import ChromaConnection
+from .memoryStorage import MemoryStorage
+from .chromaConnection import ChromaConnection
 
 class MemoriaHipocampo:
     def __init__(self):

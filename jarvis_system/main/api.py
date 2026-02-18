@@ -5,7 +5,7 @@ from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 # [IMPORTANTE] Importa o sorteador de frases
 from jarvis_system.area_broca.frases_padrao import obter_frase 
-from .core import kernel 
+from .jarvisKernel import kernel 
 
 app = FastAPI(title="J.A.R.V.I.S. API", version="3.2")
 

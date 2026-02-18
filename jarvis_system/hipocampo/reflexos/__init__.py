@@ -1,7 +1,7 @@
 import logging
 
 try:
-    from .core import HipocampoReflexos
+    from .hipocampoReflexos import HipocampoReflexos
     # Instância Singleton pronta para uso
     reflexos = HipocampoReflexos()
 except Exception as e:

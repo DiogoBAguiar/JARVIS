@@ -1,1 +1,1 @@
-from .manager import AgenteSpotify
+from .agenteSpotify import AgenteSpotify

@@ -7,9 +7,9 @@ from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.area_broca.frases_padrao import obter_frase, FRASES_DO_SISTEMA
 
 # Módulos Locais
-from .key_manager import KeyManager
-from .prompt_factory import PromptFactory
-from .providers import CloudProvider, LocalProvider
+from .keyManager import KeyManager
+from .promptFactory import PromptFactory
+from .localCloudProviders import CloudProvider, LocalProvider
 
 # Tenta importar memória (Hipocampo)
 try:

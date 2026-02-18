@@ -11,7 +11,7 @@ from ..consciencia import ConscienciaIntegrada
 from ..brain import SpotifyBrain
 
 # Configuração Local
-from .config import AGENT_NAME, TRIGGERS
+from .configSpotify import AGENT_NAME, TRIGGERS
 
 logger = logging.getLogger("SPOTIFY_MANAGER")
 

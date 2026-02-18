@@ -1,6 +1,6 @@
 # jarvis_system/cortex_frontal/orchestrator/__init__.py
 import logging
-from .main import Orchestrator
+from .orchestrator import Orchestrator
 
 log = logging.getLogger("ORCH_INIT")
 maestro = None

@@ -1,7 +1,7 @@
 # jarvis_system/cortex_frontal/event_bus/__init__.py
 import logging
 from .model import Evento
-from .core import EventBus
+from .eventBus import EventBus
 
 # Logger de inicialização (fallback se o core falhar)
 log = logging.getLogger("BUS_INIT")

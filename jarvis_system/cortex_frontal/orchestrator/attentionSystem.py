@@ -1,7 +1,7 @@
 # jarvis_system/cortex_frontal/orchestrator/attention.py
 import time
 from difflib import SequenceMatcher
-from .config import WAKE_WORDS, ATTENTION_WINDOW
+from .configOrchestrator import WAKE_WORDS, ATTENTION_WINDOW
 
 class AttentionSystem:
     def __init__(self):

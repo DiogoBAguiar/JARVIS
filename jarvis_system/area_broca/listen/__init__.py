@@ -1,6 +1,6 @@
 # jarvis_system/area_broca/listen/__init__.py
 import logging
-from .main import OuvidoBiologico
+from .ouvidoBiologico import OuvidoBiologico
 
 logger = logging.getLogger("BROCA_INIT")
 ears = None

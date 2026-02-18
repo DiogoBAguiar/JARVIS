@@ -955,7 +955,6 @@
         "sub_context": "storytelling",
         "emotion": "amused"
     },
-    
     "vocejasuperoudesafiosmaioresdoqueeste": {
         "id": "formal_06",
         "text": "Voce ja superou desafios maiores do que este",
@@ -1015,5 +1014,25 @@
         "context": "any",
         "sub_context": "storytelling",
         "emotion": "sincere"
+    },
+    "poisnao": {
+        "id": "generico_1771446125",
+        "text": "Pois não?",
+        "category": "GENERICO",
+        "context": "afternoon",
+        "sub_context": "query",
+        "key_hash": "poisnao",
+        "emotion": "indifferent",
+        "file_path": "assets/GENERICO/afternoon/query/generico_1771446125.mp3"
+    },
+    "asordens": {
+        "id": "generico_1771446132",
+        "text": "Às ordens.",
+        "category": "GENERICO",
+        "context": "afternoon",
+        "sub_context": "passive",
+        "key_hash": "asordens",
+        "emotion": "indifferent",
+        "file_path": "assets/GENERICO/afternoon/passive/generico_1771446132.mp3"
     }
 }

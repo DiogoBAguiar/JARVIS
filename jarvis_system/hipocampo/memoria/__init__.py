@@ -1,7 +1,7 @@
 import logging
 
 try:
-    from .core import MemoriaHipocampo
+    from .memoriaHipocampo import MemoriaHipocampo
     # Instância Singleton para todo o sistema
     memoria = MemoriaHipocampo()
 except Exception as e:

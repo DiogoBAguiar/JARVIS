@@ -1,1 +1,1 @@
-from .main import vision
+from .cortexVisual import vision

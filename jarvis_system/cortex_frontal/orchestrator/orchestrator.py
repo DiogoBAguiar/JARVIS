@@ -11,19 +11,19 @@ from jarvis_system.protocol import Eventos
 # Dependências
 try:
     from jarvis_system.cortex_motor.tool_registry import registry
-    from jarvis_system.cortex_motor.launcher import launcher 
+    from jarvis_system.cortex_motor.appLauncher import launcher 
     from jarvis_system.cortex_frontal.brain_llm import llm 
-    from jarvis_system.cortex_frontal.curiosity import curiosity
+    from jarvis_system.cortex_frontal.curiosityEngine import curiosity
     from jarvis_system.hipocampo.reflexos import reflexos
 except ImportError:
     registry, launcher, llm, curiosity, reflexos = None, None, None, None, None
 
 # Módulos Locais
-from .config import CONFIRMATION_YES, CONFIRMATION_NO
-from .attention import AttentionSystem
-from .learning import LearningHandler
-from .tools_handler import ToolsHandler
-from .cognition import CognitionHandler
+from .configOrchestrator import CONFIRMATION_YES, CONFIRMATION_NO
+from .attentionSystem import AttentionSystem
+from .learningHandler import LearningHandler
+from .toolsHandler import ToolsHandler
+from .cognitionHandler import CognitionHandler
 
 class Orchestrator:
     def __init__(self):

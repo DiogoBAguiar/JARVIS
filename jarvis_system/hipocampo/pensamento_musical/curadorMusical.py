@@ -2,10 +2,10 @@ import sys
 import os
 
 # Imports dos módulos
-from .search import MusicSearchEngine
-from .maintenance import MusicMaintenance
-from .enrichment import MusicEnrichment
-from .report import MusicReporter
+from .musicSearchEngine import MusicSearchEngine
+from .musicMaintenance import MusicMaintenance
+from .musicEnrichment import MusicEnrichment
+from .musicReporter import MusicReporter
 
 # Importação da memória (mantida)
 try:

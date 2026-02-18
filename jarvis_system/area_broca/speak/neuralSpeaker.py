@@ -8,14 +8,14 @@ from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 
 try:
-    from jarvis_system.cortex_frontal.voice_director import VoiceDirector
+    from jarvis_system.cortex_frontal.voiceDirector import VoiceDirector
 except ImportError:
     VoiceDirector = None
 
-from .config import FISH_TAGS
-from .engine import AudioEngine
-from .indexer import VoiceIndexer
-from .synthesizer import FishSynthesizer
+from .configSpeak import FISH_TAGS
+from .audioEngine import AudioEngine
+from .voiceIndexer import VoiceIndexer
+from .fishSynthesizer import FishSynthesizer
 
 class NeuralSpeaker:
     def __init__(self):

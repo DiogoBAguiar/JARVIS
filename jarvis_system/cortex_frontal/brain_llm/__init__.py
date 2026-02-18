@@ -1,6 +1,6 @@
 # jarvis_system/cortex_frontal/brain_llm/__init__.py
 import logging
-from .main import HybridBrain
+from .hybridBrain import HybridBrain
 
 log = logging.getLogger("BRAIN_INIT")
 llm = None

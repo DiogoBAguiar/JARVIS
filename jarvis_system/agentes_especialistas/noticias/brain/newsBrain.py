@@ -12,7 +12,7 @@ try:
 except ImportError:
     sync_playwright = None
 
-from ..tools.search_engine import NewsEngine
+from ..tools.newsEngine import NewsEngine
 
 # --- IMPORTAÇÃO DOS PROMPTS ---
 try:
@@ -22,7 +22,7 @@ except ImportError:
 
 # Dependências Opcionais
 try:
-    from .classifier import IntentRouter
+    from .intentRouter import IntentRouter
 except ImportError:
     IntentRouter = None 
 

@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Tuple, Set, List, Pattern, Dict, Any
 
-from .storage import ReflexosStorage
+from .reflexosStorage import ReflexosStorage
 from .fuzzy_logic import aplicar_fuzzy
 from .regex_compiler import compilar_padroes
 
