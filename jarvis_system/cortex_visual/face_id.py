@@ -63,13 +63,14 @@ class BiometricSystem:
         """
         1. Usa MediaPipe para achar o rosto (RÁPIDO).
         2. Usa FaceRecognition para saber quem é (PRECISO).
+        Retorna: Lista de dicionários [{'nome': str, 'bbox': (x, y, w, h)}]
         """
         if not self.known_encodings:
-            return [], []
+            return []
 
         h, w, _ = frame.shape
-        found_names = []
         face_locations_dlib = [] # Formato (top, right, bottom, left)
+        resultados = [] # Lista formatada para o Tracker
 
         # 1. DETECÇÃO RÁPIDA (MediaPipe)
         # Converte para RGB para o MediaPipe
@@ -103,14 +104,12 @@ class BiometricSystem:
 
         # Se não achou rosto, sai cedo (poupa CPU)
         if not face_locations_dlib:
-            return [], []
+            return []
 
         # 2. IDENTIFICAÇÃO (Face Recognition)
         # Passamos as localizações que o MediaPipe achou. 
         # Isso faz o face_recognition PULAR a parte pesada de procurar o rosto.
         try:
-            # Nota: Passamos a imagem original, sem resize, pois o MediaPipe já é rápido.
-            # Se ainda estiver lento, podemos reduzir.
             face_encodings = face_recognition.face_encodings(rgb_frame, face_locations_dlib)
 
             for (top, right, bottom, left), encoding in zip(face_locations_dlib, face_encodings):
@@ -123,22 +122,18 @@ class BiometricSystem:
                     if matches[best_match_index]:
                         name = self.known_names[best_match_index]
 
-                found_names.append(name)
-
-                # --- DESENHO UI ---
-                color = (0, 255, 0) if name != "Desconhecido" else (0, 0, 255)
+                # --- NOVO: Prepara as coordenadas para o Tracker do OpenCV ---
+                largura_box = right - left
+                altura_box = bottom - top
+                bbox_tracker = (left, top, largura_box, altura_box)
                 
-                # Efeito visual Sci-Fi (Cantos em vez de quadrado simples)
-                cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
-                cv2.rectangle(frame, (left, bottom - 25), (right, bottom), color, cv2.FILLED)
-                cv2.putText(frame, name.upper(), (left + 5, bottom - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                
-                # Opcional: Mostrar confiança
-                # confidence = round((1 - face_distances[best_match_index]) * 100) if len(face_distances) > 0 else 0
-                # cv2.putText(frame, f"{confidence}%", (left, top - 10), cv2.FONT_HERSHEY_PLAIN, 1, color, 1)
+                resultados.append({
+                    "nome": name,
+                    "bbox": bbox_tracker
+                })
 
-            return found_names, face_locations_dlib
+            return resultados
 
         except Exception as e:
             log.error(f"Erro no reconhecimento: {e}")
-            return [], []
+            return []

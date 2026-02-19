@@ -3,7 +3,7 @@ import signal
 import threading
 import multiprocessing # <--- Importante para as Filas
 import time
-import os
+import os # <--- Importante para forçar o fecho (os._exit)
 from typing import List, Protocol
 from dotenv import load_dotenv
 
@@ -156,18 +156,30 @@ class JarvisKernel:
         self.log.info("✅ KERNEL OPERACIONAL (Modo Não-Bloqueante).")
 
     def shutdown(self):
+        """Encerra graciosamente os sistemas e força a saída se houver bloqueios."""
         if self._shutdown_event.is_set(): return
         self._shutdown_event.set()
         self.log.info("--- SHUTDOWN ---")
         
-        # Para de trás para frente
+        # 1. Garante de forma explícita que a Visão liberta a Câmara antes de tudo
+        if hasattr(self, 'eyes') and self.eyes:
+            try:
+                self.eyes.stop()
+            except: 
+                pass
+
+        # 2. Para os restantes sistemas de trás para a frente
         for system in reversed(self._subsystems):
             try:
                 if hasattr(system, 'stop'):
                     system.stop()
-            except: pass
+            except: 
+                pass
             
         self.log.info("Bye.")
+        
+        # 3. BALA DE PRATA: Mata o processo principal imediatamente devolvendo o terminal ao utilizador
+        os._exit(0)
 
     def _register_subsystem(self, system):
         self._subsystems.append(system)

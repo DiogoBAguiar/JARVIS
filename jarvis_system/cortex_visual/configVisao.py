@@ -2,7 +2,7 @@ import os
 
 # --- HARDWARE ---
 # ID da Câmera (0 é a padrão, 1 seria uma externa USB)
-CAMERA_ID = 1
+CAMERA_ID = 0
 
 # Taxa de Quadros Alvo (Isso ajuda a não fritar a CPU tentando pegar 60fps)
 TARGET_FPS = 30

@@ -81,42 +81,48 @@ class OuvidoBiologico:
         blocos_silencio = 0
         falando = False
         
-        while not self._stop_event.is_set():
-            try:
-                chunk_int16 = self._audio_queue.get(timeout=0.5)
-            except queue.Empty:
-                continue
+        try:
+            while not self._stop_event.is_set():
+                try:
+                    chunk_int16 = self._audio_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                if chunk_int16 is None:
+                    break
 
-            # Processamento de Sinal (Normalização e Ganho)
-            chunk_float = ((chunk_int16.astype(np.float32) / 32768.0) * GANHO_MIC).flatten()
-            volume = np.linalg.norm(chunk_float) / np.sqrt(len(chunk_float))
-            
-            self._print_volume_bar(volume, falando)
-
-            # Lógica VAD
-            if volume > LIMIAR_SILENCIO:
-                if not falando:
-                    falando = True
-                blocos_silencio = 0
-                buffer_frase.append(chunk_float)
-            
-            elif falando:
-                buffer_frase.append(chunk_float)
-                blocos_silencio += 1
+                # Processamento de Sinal (Normalização e Ganho)
+                chunk_float = ((chunk_int16.astype(np.float32) / 32768.0) * GANHO_MIC).flatten()
+                volume = np.linalg.norm(chunk_float) / np.sqrt(len(chunk_float))
                 
-                if blocos_silencio > BLOCOS_PAUSA_FIM:
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
-                    
-                    self._process_transcription(buffer_frase)
-                    
-                    buffer_frase = []
-                    falando = False
-                    blocos_silencio = 0
-        
-        # Cleanup ao sair do loop
-        self.driver.stop_stream()
+                self._print_volume_bar(volume, falando)
 
+                # Lógica VAD
+                if volume > LIMIAR_SILENCIO:
+                    if not falando:
+                        falando = True
+                    blocos_silencio = 0
+                    buffer_frase.append(chunk_float)
+                
+                elif falando:
+                    buffer_frase.append(chunk_float)
+                    blocos_silencio += 1
+                    
+                    if blocos_silencio > BLOCOS_PAUSA_FIM:
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
+                        
+                        self._process_transcription(buffer_frase)
+                        
+                        buffer_frase = []
+                        falando = False
+                        blocos_silencio = 0
+        finally:
+            # Cleanup GARANTIDO ao sair do loop
+            logger.info("🎤 Encerrando o driver do microfone...")
+            try:
+                self.driver.stop_stream()
+            except Exception as e:
+                logger.error(f"Erro ao libertar microfone: {e}")
     def _print_volume_bar(self, volume, falando):
         bar_len = int(min(volume, 1.0) * 20)
         bar = "█" * bar_len
@@ -133,6 +139,17 @@ class OuvidoBiologico:
             self._thread.start()
 
     def stop(self):
+        logger.info("👂 Iniciando encerramento do Ouvido...")
         self._stop_event.set()
-        if self._thread:
+        
+        # Injeta um elemento falso (None) na fila para "acordar" o queue.get se ele estiver bloqueado
+        try:
+            self._audio_queue.put(None, timeout=1) 
+        except: pass
+        
+        if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
+            if self._thread.is_alive():
+                logger.warning("⚠️ Thread do microfone bloqueada. A forçar paragem pelo Kernel.")
+            else:
+                logger.info("👂 Microfone encerrado graciosamente.")

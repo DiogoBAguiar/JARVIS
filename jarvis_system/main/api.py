@@ -2,8 +2,11 @@ import asyncio
 import multiprocessing
 import time
 import os
+import sys
+import signal # <--- ADICIONADO PARA INTERCETAR O TECLADO
 import json
 import queue # <--- NECESSÁRIO PARA LER AS FILAS
+from asyncio.exceptions import CancelledError # <--- ADICIONADO PARA TRATAR O DESLIGAMENTO
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -14,7 +17,36 @@ from jarvis_system.protocol import Eventos
 from jarvis_system.area_broca.frases_padrao import obter_frase 
 from .jarvisKernel import kernel 
 
+# -------------------------------------------------------------------------
+# 🛑 INTERCETOR DE ENCERRAMENTO (BYPASS AO UVICORN)
+# -------------------------------------------------------------------------
+def forcar_encerramento(signum, frame):
+    # Garante que só o processo principal (MainProcess) executa a limpeza
+    if multiprocessing.current_process().name != "MainProcess":
+        os._exit(0)
+        
+    print("\n💥 [SISTEMA] Sinal de interrupção (Ctrl+C) detetado!")
+    print("🛑 Cortando conexões Web e encerrando o Kernel imediatamente...")
+    
+    # 1. Avisa os loops infinitos (como o do vídeo) para pararem
+    AppState.is_running = False
+    
+    # 2. Desliga Câmera e Microfone à força
+    kernel.shutdown()
+    
+    # 3. Mata o processo do Windows sem esperar pelo servidor web
+    print("👋 Encerrado com sucesso.")
+    os._exit(0)
+
+# Diz ao Windows para usar a nossa função quando o utilizador apertar Ctrl+C
+signal.signal(signal.SIGINT, forcar_encerramento)
+
+
 app = FastAPI(title="J.A.R.V.I.S. API", version="3.8 - Live Vision")
+
+# --- CONTROLE DE ESTADO DA APLICAÇÃO ---
+class AppState:
+    is_running = True
 
 # -------------------------------------------------------------------------
 # 📡 GESTOR DE CONEXÕES (WEBSOCKETS)
@@ -57,7 +89,7 @@ class Command(BaseModel):
 # -------------------------------------------------------------------------
 def gerar_frames_reais():
     """Lê frames da fila do Kernel e envia para o navegador"""
-    while True:
+    while AppState.is_running: # <--- AJUSTADO: Agora para quando o servidor é desligado
         # Se o kernel tiver a fila de vídeo instanciada
         if kernel.video_queue:
             try:
@@ -117,10 +149,6 @@ async def startup_event():
     
     bus.publicar(Evento(Eventos.FALAR, {"texto": frase_real or "Online."}))
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    if multiprocessing.current_process().name == "MainProcess":
-        kernel.shutdown()
 
 # -------------------------------------------------------------------------
 # 🌐 ROTAS DA API
@@ -135,8 +163,6 @@ async def root(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 # ✅ ROTA WEBSOCKET (DADOS REAIS)
-# No api.py, dentro do websocket_endpoint:
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     # Aceita a conexão imediatamente
@@ -144,7 +170,7 @@ async def websocket_endpoint(websocket: WebSocket):
     ws_manager.active_connections.append(websocket)
     
     try:
-        while True:
+        while AppState.is_running: # <--- AJUSTADO: Verifica o estado da aplicação
             # 1. Envia telemetria se houver
             if kernel.telemetry_queue and not kernel.telemetry_queue.empty():
                 try:
@@ -165,6 +191,8 @@ async def websocket_endpoint(websocket: WebSocket):
             
     except WebSocketDisconnect:
         pass
+    except CancelledError: # <--- AJUSTADO: Captura silenciosamente a interrupção ao desligar o app
+        print(">>> [API] Conexão WebSocket interrompida de forma segura (Desligamento).")
     finally:
         ws_manager.disconnect(websocket)
 

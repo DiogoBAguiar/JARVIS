@@ -1,4 +1,4 @@
-# jarvis_system/area_broca/listen/driver.py
+# jarvis_system/area_broca/listen/audioDriver.py
 import sounddevice as sd
 import logging
 
@@ -32,7 +32,14 @@ class AudioDriver:
 
     def stop_stream(self):
         if self.stream:
-            self.stream.stop()
-            self.stream.close()
-            self.stream = None
-            self.logger.info("Stream de áudio parado.")
+            try:
+                # 🛑 BALA DE PRATA DO ÁUDIO: abort() em vez de stop()
+                # O abort() corta a ligação ao microfone imediatamente, 
+                # evitando o deadlock do Windows ao pressionar Ctrl+C.
+                self.stream.abort()
+                self.stream.close()
+            except Exception as e:
+                self.logger.warning(f"Aviso ao fechar stream de áudio: {e}")
+            finally:
+                self.stream = None
+                self.logger.info("Stream de áudio cortado.")
