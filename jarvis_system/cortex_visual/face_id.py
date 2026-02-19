@@ -2,6 +2,7 @@ import os
 import cv2
 import face_recognition
 import numpy as np
+import mediapipe as mp
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from .configVisao import MEMORY_PATH, TOLERANCE
 
@@ -11,16 +12,26 @@ class BiometricSystem:
     def __init__(self):
         self.known_encodings = []
         self.known_names = []
+        
+        # --- MOTOR DE DETECÇÃO RÁPIDA (MEDIAPIPE) ---
+        # Muito mais leve que o Dlib/HOG
+        self.mp_face_detection = mp.solutions.face_detection
+        self.face_detector = self.mp_face_detection.FaceDetection(
+            model_selection=0, # 0 para rostos a menos de 2m (Webcam)
+            min_detection_confidence=0.6
+        )
+        
         self._load_memory()
 
     def _load_memory(self):
-        """Carrega todas as fotos da pasta memory/ e aprende os rostos."""
+        """Carrega biometria com tratamento de erro robusto."""
         if not os.path.exists(MEMORY_PATH):
-            os.makedirs(MEMORY_PATH)
-            log.warning(f"Pasta de memória visual criada vazia: {MEMORY_PATH}")
+            try:
+                os.makedirs(MEMORY_PATH)
+            except: pass
             return
 
-        files = [f for f in os.listdir(MEMORY_PATH) if f.endswith(('.jpg', '.png'))]
+        files = [f for f in os.listdir(MEMORY_PATH) if f.lower().endswith(('.jpg', '.png', '.jpeg'))]
         log.info(f"📸 Carregando biometria de {len(files)} pessoas...")
 
         for file in files:
@@ -28,49 +39,106 @@ class BiometricSystem:
             path = os.path.join(MEMORY_PATH, file)
             
             try:
-                img = face_recognition.load_image_file(path)
-                encodings = face_recognition.face_encodings(img)
+                # Carregamento seguro (OpenCV -> RGB -> Contiguous)
+                img = cv2.imread(path)
+                if img is None: continue
+                
+                rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                rgb_img = np.ascontiguousarray(rgb_img, dtype=np.uint8)
+
+                # Para aprender, ainda usamos o Dlib padrão pois é feito uma única vez no boot
+                encodings = face_recognition.face_encodings(rgb_img)
                 
                 if encodings:
                     self.known_encodings.append(encodings[0])
                     self.known_names.append(name)
-                    log.info(f"✅ Biometria aprendida: {name}")
+                    log.info(f"✅ Biometria: {name}")
                 else:
-                    log.warning(f"⚠️ Nenhum rosto encontrado em {file}")
+                    log.warning(f"⚠️ Rosto não legível: {file}")
+                    
             except Exception as e:
-                log.error(f"Erro ao ler {file}: {e}")
+                log.error(f"Erro em {file}: {e}")
 
     def identify(self, frame):
         """
-        Recebe um frame BGR (OpenCV), converte e busca rostos.
-        Retorna: Lista de nomes encontrados ['Diogo', 'Desconhecido']
+        1. Usa MediaPipe para achar o rosto (RÁPIDO).
+        2. Usa FaceRecognition para saber quem é (PRECISO).
         """
         if not self.known_encodings:
-            return []
+            return [], []
 
-        # Otimização: Reduz imagem para 1/4 para processar 4x mais rápido
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        
-        # Converte BGR (OpenCV) -> RGB (Face Recognition)
-        rgb_small_frame = np.ascontiguousarray(small_frame[:, :, ::-1])
-
-        # Detecta rostos
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
-
+        h, w, _ = frame.shape
         found_names = []
-        
-        for encoding in face_encodings:
-            matches = face_recognition.compare_faces(self.known_encodings, encoding, tolerance=TOLERANCE)
-            name = "Desconhecido"
+        face_locations_dlib = [] # Formato (top, right, bottom, left)
 
-            # Se houver match, usa a distância matemática para achar o "melhor match"
-            face_distances = face_recognition.face_distance(self.known_encodings, encoding)
-            best_match_index = np.argmin(face_distances)
-            
-            if matches[best_match_index]:
-                name = self.known_names[best_match_index]
+        # 1. DETECÇÃO RÁPIDA (MediaPipe)
+        # Converte para RGB para o MediaPipe
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame.flags.writeable = False # Pequena otimização
+        results = self.face_detector.process(rgb_frame)
+        rgb_frame.flags.writeable = True
 
-            found_names.append(name)
-            
-        return found_names
+        if results.detections:
+            for detection in results.detections:
+                # Extrai Bounding Box do MediaPipe
+                bboxC = detection.location_data.relative_bounding_box
+                
+                # Converte coordenadas relativas (0.0-1.0) para pixels
+                left = int(bboxC.xmin * w)
+                top = int(bboxC.ymin * h)
+                width = int(bboxC.width * w)
+                height = int(bboxC.height * h)
+
+                # Margem de segurança (o MediaPipe detecta muito justo, o Dlib precisa de testa/queixo)
+                margin_x = int(width * 0.1)
+                margin_y = int(height * 0.15)
+                
+                top = max(0, top - margin_y)
+                bottom = min(h, top + height + margin_y * 2)
+                left = max(0, left - margin_x)
+                right = min(w, left + width + margin_x * 2)
+
+                # Guarda para o passo de reconhecimento
+                face_locations_dlib.append((top, right, bottom, left))
+
+        # Se não achou rosto, sai cedo (poupa CPU)
+        if not face_locations_dlib:
+            return [], []
+
+        # 2. IDENTIFICAÇÃO (Face Recognition)
+        # Passamos as localizações que o MediaPipe achou. 
+        # Isso faz o face_recognition PULAR a parte pesada de procurar o rosto.
+        try:
+            # Nota: Passamos a imagem original, sem resize, pois o MediaPipe já é rápido.
+            # Se ainda estiver lento, podemos reduzir.
+            face_encodings = face_recognition.face_encodings(rgb_frame, face_locations_dlib)
+
+            for (top, right, bottom, left), encoding in zip(face_locations_dlib, face_encodings):
+                matches = face_recognition.compare_faces(self.known_encodings, encoding, tolerance=TOLERANCE)
+                name = "Desconhecido"
+                
+                face_distances = face_recognition.face_distance(self.known_encodings, encoding)
+                if len(face_distances) > 0:
+                    best_match_index = np.argmin(face_distances)
+                    if matches[best_match_index]:
+                        name = self.known_names[best_match_index]
+
+                found_names.append(name)
+
+                # --- DESENHO UI ---
+                color = (0, 255, 0) if name != "Desconhecido" else (0, 0, 255)
+                
+                # Efeito visual Sci-Fi (Cantos em vez de quadrado simples)
+                cv2.rectangle(frame, (left, top), (right, bottom), color, 1)
+                cv2.rectangle(frame, (left, bottom - 25), (right, bottom), color, cv2.FILLED)
+                cv2.putText(frame, name.upper(), (left + 5, bottom - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                
+                # Opcional: Mostrar confiança
+                # confidence = round((1 - face_distances[best_match_index]) * 100) if len(face_distances) > 0 else 0
+                # cv2.putText(frame, f"{confidence}%", (left, top - 10), cv2.FONT_HERSHEY_PLAIN, 1, color, 1)
+
+            return found_names, face_locations_dlib
+
+        except Exception as e:
+            log.error(f"Erro no reconhecimento: {e}")
+            return [], []

@@ -1,65 +1,108 @@
 import asyncio
 import multiprocessing
 import time
-from fastapi import FastAPI
+import os
+import json
+import queue # <--- NECESSÁRIO PARA LER AS FILAS
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles 
 from pydantic import BaseModel
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
 from jarvis_system.area_broca.frases_padrao import obter_frase 
 from .jarvisKernel import kernel 
 
-app = FastAPI(title="J.A.R.V.I.S. API", version="3.5 - Strict Sync")
+app = FastAPI(title="J.A.R.V.I.S. API", version="3.8 - Live Vision")
+
+# -------------------------------------------------------------------------
+# 📡 GESTOR DE CONEXÕES (WEBSOCKETS)
+# -------------------------------------------------------------------------
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        print(f">>> [API] Cliente conectado: {websocket.client.host}")
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, data: dict):
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(data)
+            except Exception:
+                self.disconnect(connection)
+
+ws_manager = ConnectionManager()
+
+# -------------------------------------------------------------------------
+# 🎨 FRONT-END SETUP
+# -------------------------------------------------------------------------
+templates = Jinja2Templates(directory="jarvis_system/front-end/templates")
+static_path = os.path.join("jarvis_system", "front-end", "static")
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 class Command(BaseModel):
     text: str
 
+# -------------------------------------------------------------------------
+# 📹 GERADOR DE VÍDEO REAL (Conectado ao Kernel)
+# -------------------------------------------------------------------------
+def gerar_frames_reais():
+    """Lê frames da fila do Kernel e envia para o navegador"""
+    while True:
+        # Se o kernel tiver a fila de vídeo instanciada
+        if kernel.video_queue:
+            try:
+                # Tenta pegar um frame (espera máx 0.2s)
+                frame_bytes = kernel.video_queue.get(timeout=0.2)
+                
+                # Formata como Multipart (MJPEG Standard)
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            except queue.Empty:
+                # Se não houver frame novo, dorme um pouco para não fritar a CPU
+                time.sleep(0.05)
+        else:
+            # Kernel ainda não iniciou a visão
+            time.sleep(1) 
+
+# -------------------------------------------------------------------------
+# ⏳ LÓGICA DE SINCRONIZAÇÃO
+# -------------------------------------------------------------------------
 async def aguardar_sistema_100_porcento():
-    """
-    Aguarda rigorosamente que todos os subsistemas e agentes 
-    estejam carregados antes de permitir a fala.
-    """
     print(">>> [BOOT] Aguardando Cérebro (Orchestrator)...")
-    
-    # 1. Espera o objeto existir (Instanciação)
     while not kernel.brain:
         await asyncio.sleep(0.1)
 
-    print(">>> [BOOT] Cérebro instanciado. Aguardando Especialistas (Spotify/Agenda)...")
-
-    # 2. Espera os Agentes carregarem (Verifica o flag interno do Orchestrator)
-    # Loop de segurança: aguarda até que o Orchestrator diga que está pronto.
-    # Se o teu Orchestrator não tiver o flag 'sistemas_carregados', ele vai confiar
-    # na contagem de agentes ou num timeout seguro.
-    
-    max_wait = 300 # 30 segundos de teto máximo
+    print(">>> [BOOT] Cérebro instanciado. Sincronizando...")
+    max_wait = 300
     checks = 0
-    
     while checks < max_wait:
-        # Tenta verificar o flag oficial (Recomendado no Passo 1)
         if hasattr(kernel.brain, "sistemas_carregados") and kernel.brain.sistemas_carregados:
-            print(f">>> [BOOT] ✅ Todos os especialistas carregados em {checks*0.1:.1f}s.")
+            print(f">>> [BOOT] ✅ Sistemas carregados em {checks*0.1:.1f}s.")
             break
-            
-        # Tenta verificar se a lista de agentes já está populada (Plano B)
-        # Assume-se que 'agents' ou 'tools' é onde eles ficam guardados
-        if hasattr(kernel.brain, "agents") and len(kernel.brain.agents) >= 4:
-            print(f">>> [BOOT] ✅ Detecção de agentes concluída ({len(kernel.brain.agents)} ativos).")
-            break
-            
         await asyncio.sleep(0.1)
         checks += 1
 
-    # 3. Se tiver Visão, espera ela também
     if kernel.eyes:
         print(">>> [BOOT] Sincronizando Visão...")
-        # A visão é um processo separado, damos um buffer se ela ainda não tiver dado sinal de vida
         await asyncio.sleep(1.0) 
 
     print(">>> [BOOT] Sistema J.A.R.V.I.S. Totalmente Sincronizado.")
 
+# -------------------------------------------------------------------------
+# 🚀 EVENTOS DE STARTUP
+# -------------------------------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
-    # 🛡️ TRAVA DE PROCESSO
     if multiprocessing.current_process().name != "MainProcess":
         return
 
@@ -67,28 +110,75 @@ async def startup_event():
     kernel.bootstrap()
     kernel.start_background()
     
-    # ⏳ AQUI ESTÁ A MUDANÇA: Bloqueio Real
     await aguardar_sistema_100_porcento()
     
-    # Só chega aqui quando TUDO (incluindo Spotify) estiver pronto
     frase_real = obter_frase("BOAS_VINDAS", forcar_sub_contexto="query")
-    if not frase_real:
-        frase_real = obter_frase("BOAS_VINDAS")
+    if not frase_real: frase_real = obter_frase("BOAS_VINDAS")
     
-    if frase_real:
-        print(f">>> BOOT: Frase escolhida: '{frase_real}'")
-        bus.publicar(Evento(Eventos.FALAR, {"texto": frase_real}))
-    else:
-        bus.publicar(Evento(Eventos.FALAR, {"texto": "Protocolos iniciados."}))
+    bus.publicar(Evento(Eventos.FALAR, {"texto": frase_real or "Online."}))
 
 @app.on_event("shutdown")
 async def shutdown_event():
     if multiprocessing.current_process().name == "MainProcess":
         kernel.shutdown()
 
+# -------------------------------------------------------------------------
+# 🌐 ROTAS DA API
+# -------------------------------------------------------------------------
+
+@app.get("/dashboard")
+async def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/")
+async def root(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+# ✅ ROTA WEBSOCKET (DADOS REAIS)
+# No api.py, dentro do websocket_endpoint:
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    # Aceita a conexão imediatamente
+    await websocket.accept()
+    ws_manager.active_connections.append(websocket)
+    
+    try:
+        while True:
+            # 1. Envia telemetria se houver
+            if kernel.telemetry_queue and not kernel.telemetry_queue.empty():
+                try:
+                    data = kernel.telemetry_queue.get_nowait()
+                    await websocket.send_json({"type": "telemetry", **data})
+                except: pass
+            
+            # 2. Tenta ler mensagens do front sem travar o loop
+            try:
+                # Usamos um timeout minúsculo para não bloquear a fila de telemetria
+                await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+            except asyncio.TimeoutError:
+                pass
+            except Exception:
+                break # Sai do loop se a conexão falhar
+                
+            await asyncio.sleep(0.05) # Dá fôlego ao CPU
+            
+    except WebSocketDisconnect:
+        pass
+    finally:
+        ws_manager.disconnect(websocket)
+
+# ✅ ROTA DE VÍDEO (IMAGENS REAIS)
+@app.get("/video_feed")
+def video_feed():
+    # Usa a função 'gerar_frames_reais' definida acima
+    return StreamingResponse(
+        gerar_frames_reais(), 
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
 @app.post("/command")
 def send_command(cmd: Command):
-    # Verificação extra de prontidão
     if kernel.brain and getattr(kernel.brain, "sistemas_carregados", True):
         resp = kernel.brain.processar(cmd.text)
         return {"response": resp}

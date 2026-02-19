@@ -1,6 +1,7 @@
 import sys
 import signal
 import threading
+import multiprocessing # <--- Importante para as Filas
 import time
 import os
 from typing import List, Protocol
@@ -25,14 +26,15 @@ try:
 except ImportError:
     Subconsciente = None
 
+# Importação da Visão (Corrigido para usar a classe VisualCortex)
 try:
-    from jarvis_system.cortex_visual import vision
+    from jarvis_system.cortex_visual.cortexVisual import VisualCortex
 except ImportError as e:
     print(f"⚠️ AVISO: Módulo de Visão não carregado. Motivo: {e}")
-    vision = None
+    VisualCortex = None
 except Exception as e:
     print(f"⚠️ AVISO: Erro crítico ao importar Visão: {e}")
-    vision = None
+    VisualCortex = None
 
 class Subsystem(Protocol):
     def start(self) -> None: ...
@@ -40,23 +42,38 @@ class Subsystem(Protocol):
 
 class JarvisKernel:
     _instance = None
+    _initialized = False # Flag de classe para garantir init único
 
     # Singleton Real
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(JarvisKernel, cls).__new__(cls)
-            cls._instance._initialized = False
         return cls._instance
 
     def __init__(self):
+        # Evita re-inicialização se chamado múltiplas vezes
         if self._initialized: return
+        
         self.log = JarvisLogger("KERNEL")
         self._shutdown_event = threading.Event()
         self._subsystems: List[Subsystem] = []
+        
+        # Componentes Principais
         self.brain = None
         self.mouth = None
         self.ears = None
-        self.eyes = None # NOVO: Olhos
+        self.eyes = None 
+
+        # -----------------------------------------------------------------
+        # 🌉 PONTES DE DADOS (QUEUES) PARA O FRONT-END
+        # -----------------------------------------------------------------
+        # Fila para o Vídeo (MJPEG Stream) - Max 2 frames para ser live
+        self.video_queue = multiprocessing.Queue(maxsize=2)
+        
+        # Fila para Dados (Gestos, FPS, Confiança) - Max 10 eventos
+        self.telemetry_queue = multiprocessing.Queue(maxsize=10)
+        # -----------------------------------------------------------------
+
         self._initialized = True
 
     def bootstrap(self):
@@ -72,9 +89,19 @@ class JarvisKernel:
             except Exception as e:
                 self.log.error(f"Falha no sonho: {e}")
 
-        # 1. Carrega Drivers
-        self.mouth = self._load_module('jarvis_system.area_broca.speak', 'mouth')
-        self.ears = self._load_module('jarvis_system.area_broca.listen', 'ears')
+        # 1. Carrega Drivers de Áudio
+        # Nota: Ajusta o path se necessário, assumindo que __init__ expõe a classe principal
+        try:
+            from jarvis_system.area_broca.speak import mouth
+            self.mouth = mouth
+        except:
+            self.mouth = None
+            
+        try:
+            from jarvis_system.area_broca.listen import ears
+            self.ears = ears
+        except:
+            self.ears = None
         
         # 2. Carrega Cérebro
         try:
@@ -86,16 +113,22 @@ class JarvisKernel:
 
         # 3. Registra Sentidos Básicos
         if self.mouth: 
-            self.mouth.name = "Sistema de Fala"
+            # Verifica se tem atributo 'name', senão define
+            if not hasattr(self.mouth, 'name'): self.mouth.name = "Sistema de Fala"
             self._register_subsystem(self.mouth)
+            
         if self.ears: 
-            self.ears.name = "Sistema Auditivo"
+            if not hasattr(self.ears, 'name'): self.ears.name = "Sistema Auditivo"
             self._register_subsystem(self.ears)
 
-        # 4. Carrega Visão (NOVO)
-        if vision:
+        # 4. Carrega Visão (COM FILAS)
+        if VisualCortex:
             try:
-                self.eyes = vision
+                # Injetamos as filas no construtor da visão
+                self.eyes = VisualCortex(
+                    video_queue=self.video_queue,
+                    telemetry_queue=self.telemetry_queue
+                )
                 self.eyes.name = "Córtex Visual"
                 self._register_subsystem(self.eyes)
                 self.log.info("👁️ Córtex Visual Acoplado.")
@@ -110,9 +143,13 @@ class JarvisKernel:
         
         for system in self._subsystems:
             try:
+                # Tenta pegar o nome ou usa o nome da classe
                 name = getattr(system, 'name', system.__class__.__name__)
                 self.log.info(f"Iniciando {name}...")
-                system.start()
+                
+                # Se o sistema tiver start(), chama
+                if hasattr(system, 'start'):
+                    system.start()
             except Exception as e:
                 self.log.critical(f"Falha ao iniciar {system}: {e}")
         
@@ -122,20 +159,15 @@ class JarvisKernel:
         if self._shutdown_event.is_set(): return
         self._shutdown_event.set()
         self.log.info("--- SHUTDOWN ---")
+        
+        # Para de trás para frente
         for system in reversed(self._subsystems):
             try:
-                system.stop()
+                if hasattr(system, 'stop'):
+                    system.stop()
             except: pass
+            
         self.log.info("Bye.")
-
-    # --- Utilitários ---
-    def _load_module(self, path: str, attr_name: str):
-        try:
-            module = __import__(path, fromlist=[attr_name])
-            return getattr(module, attr_name)
-        except Exception as e:
-            self.log.warning(f"Erro carregando {attr_name}: {e}")
-            return None
 
     def _register_subsystem(self, system):
         self._subsystems.append(system)
