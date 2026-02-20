@@ -2,6 +2,7 @@
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
+import re
 
 log = JarvisLogger("ORCH_TOOLS")
 
@@ -36,12 +37,20 @@ class ToolsHandler:
                     # Se for sugestão, deixamos o Orchestrator lidar com confirmação (pendente)
         
         # 3. Música (Spotify)
-        music_verbs = ["tocar", "toca", "ouvir", "bota", "play", "pausar", "proxima"]
-        if any(text.startswith(v) for v in music_verbs):
-            if self.registry:
-                res = self.registry.execute("spotify", comando=text)
+        if re.search(r"\b(toca|tocar|ouvir|bota|play|pausar|proxima|parar)\b", text):
+            # 1. Avisa que já entendeu a ordem
+            bus.publicar(Evento(Eventos.FALAR, {"texto": "Um momento, senhor."}))
+            
+            try:
+                # 2. Chama o Agente Diretamente (Ignorando o Registry)
+                from jarvis_system.agentes_especialistas.spotify.agent.agenteSpotify import AgenteSpotify
+                spotify_agent = AgenteSpotify()
+                res = spotify_agent.executar(text)
+                
                 return True, str(res)
-
+            except Exception as e:
+                log.error(f"Erro ao tentar abrir o Spotify: {e}")
+                return True, "Senhor, o Agente Especialista do Spotify reportou uma falha."
         return False, ""
 
     def execute_tool_from_llm(self, tool_name: str, command: str) -> str:

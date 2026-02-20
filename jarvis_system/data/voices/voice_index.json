@@ -1034,5 +1034,15 @@
         "key_hash": "asordens",
         "emotion": "indifferent",
         "file_path": "assets/GENERICO/afternoon/passive/generico_1771446132.mp3"
+    },
+    "estoudesconectadodomeucerebro": {
+        "id": "generico_1771546744",
+        "text": "Estou desconectado do meu cérebro.",
+        "category": "GENERICO",
+        "context": "night",
+        "sub_context": "passive",
+        "key_hash": "estoudesconectadodomeucerebro",
+        "emotion": "amused",
+        "file_path": "assets/GENERICO/night/passive/generico_1771546744.mp3"
     }
 }

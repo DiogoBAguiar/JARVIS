@@ -1,6 +1,6 @@
-# jarvis_system/area_broca/speak/synthesizer.py
 import requests
 import os
+import re
 from .configSpeak import FISH_AUDIO_API_URL, FISH_API_KEY, FISH_MODEL_ID, FISH_TAGS
 
 class FishSynthesizer:
@@ -12,14 +12,34 @@ class FishSynthesizer:
             self.log.error("API Key Fish Audio não configurada.")
             return False
 
-        # Injeção de Tags
-        cat = metadata['category']
-        sub = metadata['sub_context']
-        tag = FISH_TAGS.get(cat, FISH_TAGS.get(sub, ""))
-        
-        text_payload = f"{tag} {text}".strip()
-        self.log.info(f"🎭 Payload: '{text_payload}'")
+        # --- LÓGICA DE INJEÇÃO DE TAGS (REFINADA) ---
+        # 1. Pegamos os dados do metadata
+        cat = metadata.get('category', 'GENERICO')
+        sub = metadata.get('sub_context', 'passive')
+        emotion = metadata.get('emotion', 'neutral')
 
+        # 2. Prioridade de Tag: 
+        #    A. Se houver emoção manual (ex: 'serious'), procuramos no mapa.
+        #    B. Se não, tentamos Categoria.
+        #    C. Por fim, tentamos Sub-contexto.
+        
+        tag = ""
+        # Se a emoção for algo como 'serious', 'happy', etc.
+        if emotion != "neutral":
+            # Tenta pegar no configSpeak, se não existir, cria a tag no formato (emotion)
+            tag = FISH_TAGS.get(emotion, f"({emotion})")
+        else:
+            tag = FISH_TAGS.get(cat, FISH_TAGS.get(sub, ""))
+
+        # 3. Limpeza Final: Garante que o 'text' que veio não contém tags repetidas
+        # Isso evita o erro de: (serious) (serious) texto
+        clean_text = re.sub(r'\(.*?\)', '', text).strip()
+        
+        # Montagem do Payload Final
+        text_payload = f"{tag} {clean_text}".strip()
+        self.log.info(f"🎭 Payload Enviado: '{text_payload}'")
+
+        # --- ENVIO PARA API ---
         headers = {
             "Authorization": f"Bearer {FISH_API_KEY}",
             "Content-Type": "application/json"

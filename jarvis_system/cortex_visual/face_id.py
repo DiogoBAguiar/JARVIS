@@ -24,40 +24,72 @@ class BiometricSystem:
         self._load_memory()
 
     def _load_memory(self):
-        """Carrega biometria com tratamento de erro robusto."""
+        """Carrega biometria suportando múltiplas fotos por pessoa (Pastas)."""
         if not os.path.exists(MEMORY_PATH):
             try:
                 os.makedirs(MEMORY_PATH)
             except: pass
             return
 
-        files = [f for f in os.listdir(MEMORY_PATH) if f.lower().endswith(('.jpg', '.png', '.jpeg'))]
-        log.info(f"📸 Carregando biometria de {len(files)} pessoas...")
+        log.info(f"📸 Iniciando varredura da memória visual em: {MEMORY_PATH}")
+        pessoas_treinadas = 0
 
-        for file in files:
-            name = os.path.splitext(file)[0].replace("_", " ").title()
-            path = os.path.join(MEMORY_PATH, file)
+        # Percorre tudo o que está dentro da pasta visual_memory
+        for item in os.listdir(MEMORY_PATH):
+            person_path = os.path.join(MEMORY_PATH, item)
             
-            try:
-                # Carregamento seguro (OpenCV -> RGB -> Contiguous)
-                img = cv2.imread(path)
-                if img is None: continue
+            # SE FOR UMA PASTA (ex: "Diogo Bruno")
+            if os.path.isdir(person_path):
+                name = item.replace("_", " ").title() # O nome do utilizador é o nome da pasta
+                fotos = [f for f in os.listdir(person_path) if f.lower().endswith(('.jpg', '.png', '.jpeg'))]
                 
-                rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                rgb_img = np.ascontiguousarray(rgb_img, dtype=np.uint8)
-
-                # Para aprender, ainda usamos o Dlib padrão pois é feito uma única vez no boot
-                encodings = face_recognition.face_encodings(rgb_img)
-                
-                if encodings:
-                    self.known_encodings.append(encodings[0])
-                    self.known_names.append(name)
-                    log.info(f"✅ Biometria: {name}")
-                else:
-                    log.warning(f"⚠️ Rosto não legível: {file}")
+                if not fotos:
+                    continue
                     
-            except Exception as e:
-                log.error(f"Erro em {file}: {e}")
+                log.info(f"🧠 Treinando variabilidade para [{name}] com {len(fotos)} fotos...")
+                sucessos_pessoa = 0
+                
+                for foto in fotos:
+                    img_path = os.path.join(person_path, foto)
+                    try:
+                        img = cv2.imread(img_path)
+                        if img is None: continue
+                        
+                        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                        rgb_img = np.ascontiguousarray(rgb_img, dtype=np.uint8)
+
+                        encodings = face_recognition.face_encodings(rgb_img)
+                        
+                        if encodings:
+                            self.known_encodings.append(encodings[0])
+                            self.known_names.append(name) # Liga o encoding da foto ao nome da pasta
+                            sucessos_pessoa += 1
+                        else:
+                            log.warning(f"⚠️ Rosto não legível na foto: {foto}")
+                            
+                    except Exception as e:
+                        log.error(f"Erro ao processar {foto}: {e}")
+                
+                if sucessos_pessoa > 0:
+                    pessoas_treinadas += 1
+
+            # MANTÉM COMPATIBILIDADE (Se houver fotos soltas na raiz como antigamente)
+            elif item.lower().endswith(('.jpg', '.png', '.jpeg')):
+                name = os.path.splitext(item)[0].replace("_", " ").title()
+                try:
+                    img = cv2.imread(person_path)
+                    if img is None: continue
+                    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    rgb_img = np.ascontiguousarray(rgb_img, dtype=np.uint8)
+                    encodings = face_recognition.face_encodings(rgb_img)
+                    if encodings:
+                        self.known_encodings.append(encodings[0])
+                        self.known_names.append(name)
+                        pessoas_treinadas += 1
+                except Exception:
+                    pass
+
+        log.info(f"✅ Biometria carregada. {pessoas_treinadas} pessoas reconhecíveis no banco de dados.")
 
     def identify(self, frame):
         """

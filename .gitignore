@@ -239,3 +239,5 @@ __pycache__/
 .venv/
 env/
 .vs/
+object_memory/
+yolov8n.pt

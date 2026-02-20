@@ -46,37 +46,21 @@ class Orchestrator:
     # -------------------------------------------------------------------------
     @property
     def sistemas_carregados(self) -> bool:
-        """
-        Retorna True APENAS se o registro de ferramentas contiver os especialistas.
-        A API usa isto para decidir se pode liberar a voz.
-        """
-        if not registry:
-            return False
-            
-        # Tenta contar os especialistas de várias formas (dependendo da tua implementação do registry)
-        # Verifica atributos comuns onde os agentes costumam ficar armazenados
-        qtd = 0
-        try:
-            if hasattr(registry, 'agentes'): qtd = len(registry.agentes)
-            elif hasattr(registry, 'drivers'): qtd = len(registry.drivers)
-            elif hasattr(registry, 'ferramentas'): qtd = len(registry.ferramentas)
-            elif hasattr(registry, '_store'): qtd = len(registry._store)
-        except:
-            return False
-
-        # Consideramos 'Carregado' se houver pelo menos 3 especialistas principais
-        # (Ex: Sistema, Spotify, Clima)
-        return qtd >= 3
+        return True
 
     # -------------------------------------------------------------------------
 
     def process_input(self, evento: Evento):
-        # Ignora comandos se o sistema ainda não estiver 100% carregado
-        if not self.sistemas_carregados:
-            return
-
         raw_text = evento.dados.get("texto", "")
         if not raw_text: return
+        
+        # 🚨 LOG DE DEBUG: Vamos ver se o Orquestrador pelo menos acorda!
+        self.log.info(f"📥 Chegou no Orquestrador: '{raw_text}'")
+
+        # Ignora comandos se o sistema ainda não estiver 100% carregado
+        if not self.sistemas_carregados:
+            self.log.warning("⚠️ Comando ignorado! A trava 'sistemas_carregados' está bloqueando (menos de 3 agentes no Registry).")
+            return
 
         # 1. Normalização Básica
         clean_text = re.sub(r'[^\w\s]', '', raw_text.lower()).strip()
@@ -87,7 +71,10 @@ class Orchestrator:
 
         # 3. Atenção (Wake Word)
         is_active, payload = self.attention.check(clean_text)
-        if not is_active: return
+        
+        if not is_active: 
+            self.log.warning(f"⚠️ Comando ignorado! A palavra de ativação (Jarvis) não foi validada em: '{clean_text}'")
+            return
 
         if not payload:
             self._speak(random.choice(["Pois não?", "Estou aqui.", "Sim?", "Às ordens."]))
@@ -119,7 +106,7 @@ class Orchestrator:
 
         except Exception as e:
             self.log.error(f"Erro no pipeline: {e}")
-            self._speak("(serious) Ocorreu um erro interno no processamento.")
+            self._speak("Ocorreu um erro interno no processamento.")
 
     def _handle_confirmation(self, text: str) -> bool:
         if not self.pending_context: return False

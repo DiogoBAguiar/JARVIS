@@ -6,6 +6,7 @@ import time
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
+import re
 
 try:
     from jarvis_system.cortex_frontal.voiceDirector import VoiceDirector
@@ -40,28 +41,40 @@ class NeuralSpeaker:
         if text: self._queue.put(text)
 
     def _process_text(self, text):
-        key = self.indexer.normalize_key(text)
+        # 1. Extração e Limpeza de Tags Manuais (Evita ler parênteses)
+        manual_tag = None
+        match = re.search(r'\(([^)]*)\)', text)
+        if match:
+            manual_tag = match.group(1) # Pega o que está dentro (ex: "serious")
         
-        # 1. Tenta Cache
+        # O texto limpo é o que será falado e indexado
+        clean_text = re.sub(r'\([^)]*\)', '', text).strip()
+        
+        if not clean_text: return
+
+        # Usamos o clean_text para gerar a chave de cache
+        key = self.indexer.normalize_key(clean_text)
+        
+        # 2. Tenta Cache
         path, entry = self.indexer.get_path(key)
         if path:
             self.log.info(f"💾 Memória: {entry.get('id')}")
             self.engine.play_file(path, self._stop_event)
             return
 
-        # 2. Aprende (Síntese)
-        cat = self.indexer.determine_category(text)
-        ctx = self.indexer.detect_context_temporal(text)
-        sub = self.indexer.detect_sub_context(text, cat)
-        new_id = self.indexer.generate_next_id(cat)
+        # 3. Determina a Emoção (Prioridade: Manual > Automática)
+        cat = self.indexer.determine_category(clean_text)
+        ctx = self.indexer.detect_context_temporal(clean_text)
+        sub = self.indexer.detect_sub_context(clean_text, cat)
         
-        # Analise de tom opcional
-        emotion = "neutral"
-        if self.voice_director:
-            try: emotion = self.voice_director.analisar_tom(text)
+        emotion = manual_tag if manual_tag else "neutral"
+        
+        if not manual_tag and self.voice_director:
+            try: emotion = self.voice_director.analisar_tom(clean_text)
             except: pass
 
-        # Prepara caminhos
+        # 4. Prepara Síntese
+        new_id = self.indexer.generate_next_id(cat)
         filename = f"{new_id}.mp3"
         rel_dir = os.path.join("assets", cat, ctx, sub)
         abs_dir = os.path.join(self.indexer.base_dir, rel_dir)
@@ -70,22 +83,24 @@ class NeuralSpeaker:
 
         metadata = {
             "id": new_id,
-            "text": text,
+            "text": clean_text,
             "category": cat,
             "context": ctx,
             "sub_context": sub,
             "key_hash": key,
-            "emotion": emotion,
+            "emotion": emotion, # A tag manual agora viaja aqui!
             "file_path": os.path.join(rel_dir, filename).replace("\\", "/")
         }
 
-        success = self.synth.synthesize(text, metadata, out_path)
+        # 5. Síntese ou Fallback (Sempre usando o clean_text)
+        success = self.synth.synthesize(clean_text, metadata, out_path)
         
         if success:
             self.indexer.save_entry(metadata)
             self.engine.play_file(out_path, self._stop_event)
         else:
-            self.engine.speak_offline(text)
+            # Adeus Vergonha Alheia: O fallback agora recebe o texto sem tags!
+            self.engine.speak_offline(clean_text)
 
     def _worker(self):
         while not self._stop_event.is_set():

@@ -2,10 +2,10 @@ import os
 
 # --- HARDWARE ---
 # ID da Câmera (0 é a padrão, 1 seria uma externa USB)
-CAMERA_ID = 0
+CAMERA_ID = 1
 
 # Taxa de Quadros Alvo (Isso ajuda a não fritar a CPU tentando pegar 60fps)
-TARGET_FPS = 30
+TARGET_FPS = 15
 
 # Resolução de Captura 
 # 640x480 é o ideal para CPU. Se tiveres GPU configurada, podes tentar 1280x720.
@@ -22,12 +22,12 @@ FACE_CHECK_INTERVAL = 0.5
 # 0.6 = Padrão (pode confundir pessoas parecidas)
 # 0.5 = Rigoroso (melhor segurança)
 # 0.4 = Muito Rigoroso (pode não te reconhecer se a luz mudar)
-TOLERANCE = 0.55
+TOLERANCE = 0.48
 
 # Modelo de Detecção
 # 'hog' = Mais rápido, roda bem em CPU (RECOMENDADO AGORA)
 # 'cnn' = Muito preciso, mas exige placa NVIDIA com CUDA (Dlib compilado)
-DETECTION_MODEL = "hog"
+DETECTION_MODEL = "cnn"
 
 # --- INTERFACE VISUAL (HUD) ---
 # Cores no formato BGR (Blue, Green, Red) - Padrão do OpenCV
