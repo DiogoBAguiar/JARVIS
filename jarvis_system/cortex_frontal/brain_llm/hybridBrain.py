@@ -1,4 +1,4 @@
-# jarvis_system/cortex_frontal/brain_llm/main.py
+# jarvis_system/cortex_frontal/brain_llm/hybridBrain.py
 import time
 import re
 from jarvis_system.cortex_frontal.observability import JarvisLogger
@@ -16,6 +16,12 @@ try:
     from jarvis_system.hipocampo.memoria import memoria
 except ImportError:
     memoria = None
+
+# FASE 3: Importa o Registry para obter o Catálogo Dinâmico
+try:
+    from jarvis_system.cortex_motor.tool_registry import registry
+except ImportError:
+    registry = None
 
 class HybridBrain:
     def __init__(self):
@@ -58,8 +64,15 @@ class HybridBrain:
         # 2. Dica de Intenção (Pré-processamento)
         dica = self._detectar_intencao_forcada(texto_usuario)
         
+        # 2.5 FASE 3: Catálogo Dinâmico de Ferramentas (Tool Context)
+        # O cérebro puxa as ferramentas ativas diretamente do Motor de Ações.
+        catalogo_ferramentas = ""
+        if registry:
+            catalogo_ferramentas = registry.get_all_tool_descriptions()
+        
         # 3. Montagem do Prompt
-        sys_prompt = PromptFactory.build_system_prompt()
+        # Injetamos o catálogo no prompt mestre de forma fluida
+        sys_prompt = PromptFactory.build_system_prompt(tool_catalog=catalogo_ferramentas)
         user_prompt = PromptFactory.build_user_prompt(texto_usuario, contexto_rag, dica)
         
         resposta = ""
@@ -74,7 +87,6 @@ class HybridBrain:
             provider_used = "LOCAL"
 
         # 5. Pós-Processamento (Interceptação de Tags Legadas)
-        # Se o LLM responder [[STATUS]], buscamos o texto no cache de frases
         if resposta.startswith("[[") and resposta.endswith("]]"):
             tag = resposta
             frase_cache = obter_frase(tag)
@@ -82,7 +94,6 @@ class HybridBrain:
                 self.log.info(f"🎯 Cache Hit (Legado): {tag} -> Áudio Otimizado")
                 resposta = frase_cache
             else:
-                # Se não achar no cache, remove colchetes e fala a tag
                 resposta = tag.replace("[[", "").replace("]]", "")
 
         latency = time.time() - start_time

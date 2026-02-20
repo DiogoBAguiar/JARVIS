@@ -2,6 +2,7 @@
 import time
 import re
 import random
+import asyncio
 from typing import Optional
 
 from jarvis_system.cortex_frontal.observability import JarvisLogger
@@ -130,20 +131,75 @@ class Orchestrator:
                 reflexos.adicionar_correcao(ctx["original_term"], ctx["name"].lower())
         self.pending_context = None
 
-    def _execute_json_action(self, action: dict):
-        tool = action.get("ferramenta")
-        
-        if tool == "memoria_gravar":
-            dado = action.get("dado") or action.get("parametro")
-            if llm: llm.ensinar(dado)
-            self._speak(f"Memorizado: {dado}")
-            return
+    class DependencyNode:
+        """Estrutura do TaskBench para nós do Grafo (DAG)."""
+        def __init__(self, task_id, target_tool, initial_args, dependencies):
+            self.task_id = task_id
+            self.target_tool = target_tool
+            self.initial_args = initial_args
+            self.dependencies = dependencies
+            self.output_data = None
+            self.completion_event = asyncio.Event() # Cadeado assíncrono
 
-        if tool in ["spotify", "sistema"]:
-            cmd = action.get("comando")
-            msg = self.tools.execute_tool_from_llm(tool, cmd)
-            self._speak(msg)
-            return
+    def _execute_json_action(self, action_data):
+        """
+        FASE 2: Motor de Execução de Grafos (DAG).
+        Lê a lista de tarefas, mapeia dependências e dispara tudo em paralelo.
+        """
+        # 1. Normalização (Aceita o DAG novo ou o dicionário antigo como fallback)
+        tasks = action_data if isinstance(action_data, list) else [action_data]
+        nodes = []
+
+        # 2. Constrói os Nós do Grafo
+        for t in tasks:
+            if "ferramenta" in t: # Fallback para o modo antigo (dict)
+                nodes.append(self.DependencyNode("t1", t.get("ferramenta"), {k: v for k, v in t.items() if k != "ferramenta"}, []))
+            else: # Novo modo Grafo DAG
+                nodes.append(self.DependencyNode(
+                    t.get("task_id", f"task_{random.randint(0,999)}"),
+                    t.get("target_tool"),
+                    t.get("initial_args", {}),
+                    t.get("dependencies", [])
+                ))
+
+        self.log.info(f"🕸️ Grafo de Tarefas (DAG) montado com {len(nodes)} nó(s). Executando...")
+
+        # 3. Lógica Assíncrona de Paralelismo
+        async def process_single_node(node, all_nodes):
+            # A) Aguardar as dependências terminarem primeiro
+            for dep_id in node.dependencies:
+                dep_node = next((n for n in all_nodes if n.task_id == dep_id), None)
+                if dep_node:
+                    self.log.info(f"⏳ Nó '{node.task_id}' aguardando nó '{dep_id}' terminar...")
+                    await dep_node.completion_event.wait()
+
+            # B) Executar a Ferramenta
+            self.log.info(f"🚀 Disparando Nó '{node.task_id}' -> Ferramenta: '{node.target_tool}'")
+            try:
+                if node.target_tool == "memoria_gravar":
+                    dado = node.initial_args.get("dado") or node.initial_args.get("parametro")
+                    if llm: llm.ensinar(dado)
+                    node.output_data = f"Memorizado: {dado}"
+                else:
+                    node.output_data = self.tools.execute_tool_from_llm(node.target_tool, **node.initial_args)
+            except Exception as e:
+                node.output_data = f"Erro na tarefa {node.task_id}: {e}"
+
+            # C) Destrancar o cadeado (Avisa quem estava esperando que terminou)
+            self.log.info(f"✅ Nó '{node.task_id}' concluído.")
+            node.completion_event.set()
+
+        async def execute_graph():
+            # Inicia TODOS os nós ao mesmo tempo. Os que têm dependências vão pausar sozinhos.
+            await asyncio.gather(*(process_single_node(n, nodes) for n in nodes))
+
+        # 4. Inicia o Loop Assíncrono para resolver o Grafo
+        asyncio.run(execute_graph())
+
+        # 5. Fala os resultados processados para o usuário
+        for n in nodes:
+            if n.output_data and str(n.output_data).strip() and str(n.output_data) != "None":
+                self._speak(str(n.output_data))
 
     def _speak(self, text: str):
         bus.publicar(Evento(Eventos.FALAR, {"texto": text}))

@@ -45,12 +45,30 @@ class CognitionHandler:
 
         return raw_response, None
 
-    def _extract_json(self, text: str) -> dict:
+    def _extract_json(self, text: str):
+        """
+        Caça blocos de JSON gerados pelo LLM.
+        Agora suporta o retorno em formato de Grafo de Tarefas (Listas JSON).
+        """
+        import json
+        import re
         try:
+            # 1. Tenta extrair um Array JSON (Novo Padrão DAG - Fase 2)
+            if "[" in text and "]" in text:
+                match_array = re.search(r'\[.*\]', text, re.DOTALL)
+                if match_array:
+                    # Avalia se o array capturado parece conter objetos
+                    parsed = json.loads(match_array.group(0))
+                    if isinstance(parsed, list):
+                        return parsed
+
+            # 2. Tenta extrair Objeto único (Fallback para o padrão antigo)
             if "{" in text and "}" in text:
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    return json.loads(match.group(0))
+                match_obj = re.search(r'\{.*\}', text, re.DOTALL)
+                if match_obj:
+                    return json.loads(match_obj.group(0))
+
         except Exception as e:
             log.warning(f"Falha ao parsear JSON do LLM: {e}")
+            
         return None

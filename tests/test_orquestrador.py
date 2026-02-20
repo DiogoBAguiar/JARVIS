@@ -36,6 +36,7 @@ def testar_roteamento():
             "jarvis tocar coldplay",
             "jarvis abrir bloco de notas",
             "jarvis qual é o sentido da vida?"
+            "jarvis, abra o bloco de notas e me diga qual é o clima atual"
         ]
         
         for frase in frases_teste:

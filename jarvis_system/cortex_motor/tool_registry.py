@@ -1,9 +1,11 @@
-from typing import Callable, Dict, Any, Optional
+import json
+from typing import Callable, Dict, Any, Optional, Type
 from dataclasses import dataclass
+from pydantic import BaseModel, ValidationError
+
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
 # --- IMPORTAÇÃO DOS AGENTES ESPECIALISTAS (LEVES) ---
-# Mantemos no topo apenas os agentes que NÃO usam bibliotecas pesadas (como ChromaDB/Torch)
 try:
     from jarvis_system.agentes_especialistas.agente_calendario import AgenteCalendario
 except ImportError:
@@ -24,58 +26,34 @@ try:
 except ImportError:
     AgenteMedia = None
 
-# OBS: O AgenteSpotify foi removido daqui para evitar Deadlock no Windows
-# Ele será importado sob demanda dentro da classe ToolRegistry.
-
-# Padronização do nome do logger
 log = JarvisLogger("MOTOR_REGISTRY")
 
 @dataclass
 class ToolDefinition:
-    """Metadados de uma ferramenta funcional simples."""
+    """Metadados de uma ferramenta funcional simples, blindada."""
     name: str
     description: str
     func: Callable
+    parameters_schema: Optional[Type[BaseModel]] = None
     safe_mode: bool = True 
 
 class ToolRegistry:
-    """
-    Gerenciador central de capacidades do Jarvis.
-    Singleton Registry - Suporta Funções e Agentes Especialistas.
-    """
     def __init__(self):
-        # Armazena ferramentas simples (funções decoradas)
         self._tools: Dict[str, ToolDefinition] = {}
-        # Armazena agentes complexos (classes especialistas)
         self._agentes: Dict[str, Any] = {}
-        
-        # Inicializa os especialistas automaticamente
         self._carregar_especialistas()
 
     def _carregar_especialistas(self):
-        """Instancia e registra os agentes especialistas disponíveis."""
-        
-        # 1. Lista de Agentes Leves (Importados no topo)
-        lista_classes = [
-            AgenteCalendario,
-            AgenteSistema,
-            AgenteClima,
-            AgenteMedia,
-        ]
+        lista_classes = [AgenteCalendario, AgenteSistema, AgenteClima, AgenteMedia]
 
-        # 2. IMPORTAÇÃO TARDIA (LAZY IMPORT) DO SPOTIFY
-        # Resolve o erro de "Import Lock Deadlock" no Windows com multiprocessing.
-        # Só importamos o módulo pesado quando esta função é executada pelo processo pai.
         try:
             from jarvis_system.agentes_especialistas.spotify.agent import AgenteSpotify
             lista_classes.append(AgenteSpotify)
-            # log.debug("🔧 Módulo Spotify importado com sucesso (Lazy Load).")
         except ImportError:
             log.warning("⚠️ Agente Spotify não encontrado ou dependências ausentes.")
         except Exception as e:
             log.error(f"❌ Erro ao importar Agente Spotify: {e}")
 
-        # 3. Instanciação e Registro
         for ClasseAgente in lista_classes:
             if ClasseAgente:
                 try:
@@ -85,74 +63,72 @@ class ToolRegistry:
                 except Exception as e:
                     log.error(f"Falha ao carregar agente {ClasseAgente}: {e}")
 
-    def register(self, name: str, description: str, safe_mode: bool = True):
-        """
-        Decorator para registrar funções simples como ferramentas.
-        """
+    def register(self, name: str, description: str, schema: Type[BaseModel] = None, safe_mode: bool = True):
         def decorator(func: Callable):
             if name in self._tools:
                 log.warning(f"⚠️ Sobrescrevendo ferramenta: {name}")
             
             self._tools[name] = ToolDefinition(
-                name=name,
-                description=description,
-                func=func,
-                safe_mode=safe_mode
+                name=name, description=description, func=func,
+                parameters_schema=schema, safe_mode=safe_mode
             )
             log.debug(f"🔧 Ferramenta funcional registrada: '{name}'")
             return func
         return decorator
 
     def list_tools(self) -> list[str]:
-        """Lista todas as ferramentas e agentes disponíveis."""
-        func_tools = list(self._tools.keys())
-        agent_tools = list(self._agentes.keys())
-        return func_tools + agent_tools
+        return list(self._tools.keys()) + list(self._agentes.keys())
 
-    def identificar_agente(self, texto: str) -> Optional[str]:
+    def get_all_tool_descriptions(self) -> str:
         """
-        Tenta descobrir qual Agente Especialista deve tratar o texto
-        baseado nos gatilhos (palavras-chave) definidos no agente.
+        FASE 3: Exporta o catálogo de ferramentas e agentes disponíveis.
+        Será usado para injetar o contexto dinâmico no Prompt da IA.
         """
-        texto_lower = texto.lower()
+        desc = []
         for nome, agente in self._agentes.items():
-            # Verifica se o agente tem a propriedade 'gatilhos'
-            if hasattr(agente, 'gatilhos'):
-                for gatilho in agente.gatilhos:
-                    if gatilho in texto_lower:
-                        return nome
-        return None
+            # Tenta pegar uma docstring ou atributo de descrição do agente
+            descricao = getattr(agente, 'descricao', f"Agente especialista em {nome}")
+            desc.append(f"- Ferramenta: '{nome}' | Uso: {descricao}")
+            
+        for nome, tool in self._tools.items():
+            desc.append(f"- Ferramenta: '{nome}' | Uso: {tool.description}")
+            
+        return "\n".join(desc)
 
     def execute(self, tool_name: str, **kwargs) -> Any:
-        """
-        Executa uma ferramenta (seja função ou agente) blindada contra falhas.
-        """
-        # 1. Verifica se é um Agente Especialista
         if tool_name in self._agentes:
             agente = self._agentes[tool_name]
             try:
                 log.info(f"🎩 Delegando para Especialista: {tool_name}")
-                # O comando principal geralmente vem no kwargs ou como primeiro argumento
-                # Adaptação para garantir que o texto chegue ao agente
                 comando = kwargs.get('comando') or kwargs.get('texto') or ""
                 return agente.executar(comando)
             except Exception as e:
                 log.error(f"❌ Falha no Agente {tool_name}: {e}")
                 return f"O especialista {tool_name} encontrou um erro."
 
-        # 2. Verifica se é uma Ferramenta Funcional
         if tool_name in self._tools:
             tool = self._tools[tool_name]
             try:
-                log.info(f"🚀 Executando Tool: {tool_name} {kwargs if kwargs else ''}")
-                return tool.func(**kwargs)
+                log.info(f"🚀 Executando Tool: {tool_name}")
+                if tool.parameters_schema:
+                    try:
+                        validated_args = tool.parameters_schema.model_validate(kwargs)
+                        safe_kwargs = validated_args.model_dump()
+                    except ValidationError as validation_error:
+                        error_msg = f"Erro Sintático: {str(validation_error)}. Corrija o payload JSON."
+                        log.warning(f"🛡️ Blindagem ativada: {error_msg}")
+                        return json.dumps({"status": "execution_failed", "error": error_msg})
+                else:
+                    safe_kwargs = kwargs
+
+                resultado = tool.func(**safe_kwargs)
+                return json.dumps({"status": "success", "data": resultado})
+
             except Exception as e:
                 log.error(f"❌ Falha crítica na ferramenta {tool_name}: {e}")
-                return f"Falha ao executar {tool_name}."
+                return json.dumps({"status": "execution_failed", "error": str(e)})
 
-        # 3. Não encontrou nada
         log.error(f"Tentativa de execução de ferramenta fantasma: {tool_name}")
-        return f"Erro: A ferramenta ou agente '{tool_name}' não está registrado."
+        return json.dumps({"status": "error", "message": f"Ferramenta '{tool_name}' não existe."})
 
-# Instância global
 registry = ToolRegistry()

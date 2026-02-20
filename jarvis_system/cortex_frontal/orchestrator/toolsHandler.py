@@ -1,4 +1,4 @@
-# jarvis_system/cortex_frontal/orchestrator/tools_handler.py
+# jarvis_system/cortex_frontal/orchestrator/toolsHandler.py
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos
@@ -14,7 +14,12 @@ class ToolsHandler:
     def handle_direct_command(self, text: str) -> tuple[bool, str]:
         """Tenta executar comandos diretos sem passar pelo LLM."""
         
-        # 1. Sistema
+        # 1. Blindagem crítica: Previne o erro "cannot unpack non-iterable NoneType"
+        # que quebra o pipeline do orquestrador se o input chegar vazio/nulo.
+        if not text:
+            return False, ""
+        
+        # 2. Sistema
         if "desligar sistema" in text or "desligar protocolos" in text:
             bus.publicar(Evento(Eventos.SHUTDOWN, {}))
             return True, "Desligando protocolos. Até logo."
@@ -24,7 +29,7 @@ class ToolsHandler:
                 self.registry.execute("sistema", comando="aumenta o volume")
             return True, "Painel de volume acionado."
 
-        # 2. Launcher (Ex: "Abrir Chrome")
+        # 3. Launcher (Ex: "Abrir Chrome")
         verbs = ["abrir", "iniciar", "executar", "rodar"]
         for v in verbs:
             if text.startswith(v + " "):
@@ -34,15 +39,14 @@ class ToolsHandler:
                     if status == "EXATO":
                         self.launcher.abrir_por_caminho(path)
                         return True, f"Abrindo {nome}."
-                    # Se for sugestão, deixamos o Orchestrator lidar com confirmação (pendente)
         
-        # 3. Música (Spotify)
+        # 4. Música (Spotify)
         if re.search(r"\b(toca|tocar|ouvir|bota|play|pausar|proxima|parar)\b", text):
-            # 1. Avisa que já entendeu a ordem
+            # Avisa que já entendeu a ordem
             bus.publicar(Evento(Eventos.FALAR, {"texto": "Um momento, senhor."}))
             
             try:
-                # 2. Chama o Agente Diretamente (Ignorando o Registry)
+                # Chama o Agente Diretamente (Mantendo seu workaround para evitar Deadlocks no Windows)
                 from jarvis_system.agentes_especialistas.spotify.agent.agenteSpotify import AgenteSpotify
                 spotify_agent = AgenteSpotify()
                 res = spotify_agent.executar(text)
@@ -51,20 +55,20 @@ class ToolsHandler:
             except Exception as e:
                 log.error(f"Erro ao tentar abrir o Spotify: {e}")
                 return True, "Senhor, o Agente Especialista do Spotify reportou uma falha."
+                
         return False, ""
 
-    def execute_tool_from_llm(self, tool_name: str, command: str) -> str:
-        """Executa ferramenta solicitada via JSON do LLM."""
-        
-        if tool_name == "spotify":
-            if self.registry:
-                return str(self.registry.execute("spotify", comando=command))
-        
-        if tool_name == "sistema":
-            # Reutiliza a lógica de launcher se o comando for "abrir x"
-            if command.startswith("abrir"):
-                ok, msg = self.handle_direct_command(command)
-                if ok: return msg
-            # Outros comandos de sistema podem ser implementados aqui
+    def execute_tool_from_llm(self, tool_name: str, **kwargs) -> str:
+        """
+        Executa ferramenta solicitada via JSON do LLM.
+        Agora é dinâmico: ele apenas confia no Registry blindado (Fase 1).
+        Não importa se você tem 2 ou 500 ferramentas, o código aqui não muda mais.
+        """
+        if not self.registry:
+            log.error("Registry não está inicializado no ToolsHandler.")
+            return "Erro interno: ToolRegistry inativo."
             
-        return "Ferramenta não encontrada ou comando inválido."
+        log.info(f"Recebido do LLM -> Roteando para: '{tool_name}' com args: {kwargs}")
+        
+        # O Registry (que agora usa Pydantic) cuida de executar, validar falhas e retornar o JSON.
+        return str(self.registry.execute(tool_name, **kwargs))
