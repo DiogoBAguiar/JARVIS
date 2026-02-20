@@ -59,19 +59,24 @@ class SpotifyController:
 
     def play_search(self, query: str, tipo: str = "musica"):
         """
-        Fluxo Principal: Web Driver (Tentativa A) -> Visual Desktop (Tentativa B).
+        Fluxo Principal: Garante que o App está aberto -> Tenta Web -> Tenta Visual.
         """
-        
+        # 0. MUDANÇA: Garante que o App está rodando ANTES de qualquer coisa
+        logger.info("🚀 [Controller] Verificando/Iniciando Spotify Desktop...")
+        if not self.process.launch():
+            return "Falha ao iniciar aplicação Desktop."
+            
+        self.focar_janela()
+
         # --- TENTATIVA 1: WEB DRIVER (Velocidade & Controle Remoto) ---
         if self.web_driver:
             logger.info(f"⚡ [Controller] Tentando via Web Driver: '{query}' (Tipo: {tipo})")
             try:
-                # MUDANÇA CRÍTICA: Passamos None para ativar o Scanner Automático do Driver
                 # O Driver vai descobrir sozinho que o nome do PC é "Jarvas"
                 sucesso = self.web_driver.tocar(query, tipo=tipo, device_name=None)
                 
                 if sucesso:
-                    return f"Tocando via Web (Remote): {query}"
+                    return f"(happy) Tocando {query} remotamente via web."
                 else:
                     logger.warning("⚠️ [Controller] Web Driver retornou False. Iniciando Fallback...")
             
@@ -80,10 +85,6 @@ class SpotifyController:
         
         # --- TENTATIVA 2: VISUAL DESKTOP (Backup Robusto) ---
         logger.info("👁️ [Controller] Ativando Modo Visual (Força Bruta)...")
-
-        # 1. Garante que o App está rodando
-        if not self.process.launch():
-            return "Falha ao iniciar aplicação Desktop."
 
         try:
             self.focar_janela()
@@ -96,7 +97,7 @@ class SpotifyController:
 
             # 3. Navegação Visual Inteligente
             if self.navigator.find_and_click(query, tipo=tipo):
-                return f"Tocando {tipo} (Visual): {query}"
+                return f"Tocando {tipo} : {query}"
 
             # 4. Fallback: Modo Cego
             logger.warning("⌨️ Falha visual total. Acionando modo cego.")

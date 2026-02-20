@@ -18,6 +18,7 @@ class AppLauncher:
             "steam": "steam://open/main",
             "discord": "discord:",
             "telegram": "tg://",
+            "bloco de notas": "notepad",
             
             # Sites úteis
             "chatgpt": "https://chatgpt.com",

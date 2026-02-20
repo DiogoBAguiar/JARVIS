@@ -4,7 +4,7 @@ import re
 from jarvis_system.cortex_frontal.observability import JarvisLogger
 
 # Mantemos a compatibilidade com o sistema de frases antigas
-from jarvis_system.area_broca.frases_padrao import obter_frase, FRASES_DO_SISTEMA
+from jarvis_system.area_broca.frases_padrao import obter_frase
 
 # Módulos Locais
 from .keyManager import KeyManager
@@ -27,7 +27,7 @@ class HybridBrain:
         self.local = LocalProvider()
         
         # Info para logs
-        self.categorias_str = ", ".join(FRASES_DO_SISTEMA.keys())
+        self.categorias_str = "Categorias dinâmicas carregadas via JSON"
         
         self.log.info("🧠 Córtex Frontal (Modular v2.0) Online.")
 

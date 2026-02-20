@@ -12,31 +12,27 @@ class FishSynthesizer:
             self.log.error("API Key Fish Audio não configurada.")
             return False
 
-        # --- LÓGICA DE INJEÇÃO DE TAGS (REFINADA) ---
-        # 1. Pegamos os dados do metadata
-        cat = metadata.get('category', 'GENERICO')
-        sub = metadata.get('sub_context', 'passive')
-        emotion = metadata.get('emotion', 'neutral')
-
-        # 2. Prioridade de Tag: 
-        #    A. Se houver emoção manual (ex: 'serious'), procuramos no mapa.
-        #    B. Se não, tentamos Categoria.
-        #    C. Por fim, tentamos Sub-contexto.
+        # Verifica se o texto já começa com uma tag gerada nativamente pelo LLM (ex: "(amused) ...")
+        match = re.match(r'^\(.*?\)', text.strip())
         
-        tag = ""
-        # Se a emoção for algo como 'serious', 'happy', etc.
-        if emotion != "neutral":
-            # Tenta pegar no configSpeak, se não existir, cria a tag no formato (emotion)
-            tag = FISH_TAGS.get(emotion, f"({emotion})")
+        if match:
+            # O LLM enviou uma emoção! Vamos preservá-la e mandar do jeito que veio.
+            text_payload = text.strip()
         else:
-            tag = FISH_TAGS.get(cat, FISH_TAGS.get(sub, ""))
+            # O LLM não mandou emoção no texto. Vamos usar a sua lógica de fallback (metadata)
+            cat = metadata.get('category', 'GENERICO')
+            sub = metadata.get('sub_context', 'passive')
+            emotion = metadata.get('emotion', 'neutral')
 
-        # 3. Limpeza Final: Garante que o 'text' que veio não contém tags repetidas
-        # Isso evita o erro de: (serious) (serious) texto
-        clean_text = re.sub(r'\(.*?\)', '', text).strip()
-        
-        # Montagem do Payload Final
-        text_payload = f"{tag} {clean_text}".strip()
+            if emotion != "neutral":
+                tag = FISH_TAGS.get(emotion, f"({emotion})")
+            else:
+                tag = FISH_TAGS.get(cat, FISH_TAGS.get(sub, ""))
+
+            # Remove lixo para não duplicar, caso haja erro
+            clean_text = re.sub(r'\(.*?\)', '', text).strip()
+            text_payload = f"{tag} {clean_text}".strip()
+
         self.log.info(f"🎭 Payload Enviado: '{text_payload}'")
 
         # --- ENVIO PARA API ---

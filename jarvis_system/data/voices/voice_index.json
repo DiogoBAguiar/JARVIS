@@ -1044,5 +1044,45 @@
         "key_hash": "estoudesconectadodomeucerebro",
         "emotion": "amused",
         "file_path": "assets/GENERICO/night/passive/generico_1771546744.mp3"
+    },
+    "ahcoldplayumabandaiconicanaoecomhitscomoaskyfullofstarsmagiceatemesmosparkselestemumrepertorioincrivelqualmusicadeleseasuafavorita": {
+        "id": "generico_1771552907",
+        "text": "Ah, Coldplay! Uma banda icônica, não é? Com hits como \"A Sky Full of Stars\", \"Magic\" e até mesmo \"Sparks\", eles têm um repertório incrível. Qual música deles é a sua favorita?",
+        "category": "GENERICO",
+        "context": "night",
+        "sub_context": "query",
+        "key_hash": "ahcoldplayumabandaiconicanaoecomhitscomoaskyfullofstarsmagiceatemesmosparkselestemumrepertorioincrivelqualmusicadeleseasuafavorita",
+        "emotion": "happy",
+        "file_path": "assets/GENERICO/night/query/generico_1771552907.mp3"
+    },
+    "ahocoldplayumabandaincrivelcomumadiscografiaimpressionanteparecequetemosalgumasmusicasdelasemnossamemoriaincluindoaskyfullofstarsdoalbumghoststoriesmagicdoalbumaheadfullofdreamsesparksqualeasuamusicafavoritadocoldplay": {
+        "id": "generico_1771552923",
+        "text": "Ah, o Coldplay! Uma banda incrível com uma discografia impressionante. Parece que temos algumas músicas delas em nossa memória, incluindo \"A Sky Full of Stars\" do álbum Ghost Stories, \"Magic\" do álbum A Head Full of Dreams, e \"Sparks\". Qual é a sua música favorita do Coldplay?",
+        "category": "GENERICO",
+        "context": "night",
+        "sub_context": "query",
+        "key_hash": "ahocoldplayumabandaincrivelcomumadiscografiaimpressionanteparecequetemosalgumasmusicasdelasemnossamemoriaincluindoaskyfullofstarsdoalbumghoststoriesmagicdoalbumaheadfullofdreamsesparksqualeasuamusicafavoritadocoldplay",
+        "emotion": "happy",
+        "file_path": "assets/GENERICO/night/query/generico_1771552923.mp3"
+    },
+    "ummomentosenhor": {
+        "id": "generico_1771553054",
+        "text": "Um momento, senhor.",
+        "category": "GENERICO",
+        "context": "night",
+        "sub_context": "passive",
+        "key_hash": "ummomentosenhor",
+        "emotion": "indifferent",
+        "file_path": "assets/GENERICO/night/passive/generico_1771553054.mp3"
+    },
+    "tocandoviawebcoldplay": {
+        "id": "generico_1771553115",
+        "text": "Tocando via Web : Coldplay",
+        "category": "GENERICO",
+        "context": "night",
+        "sub_context": "passive",
+        "key_hash": "tocandoviawebcoldplay",
+        "emotion": "Remote",
+        "file_path": "assets/GENERICO/night/passive/generico_1771553115.mp3"
     }
 }

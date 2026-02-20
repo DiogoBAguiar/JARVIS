@@ -1,9 +1,15 @@
 import sys
 import os
+from dotenv import load_dotenv # <--- ADICIONA ISTO
+
+# 1. Força o carregamento do .env a partir da raiz do projeto!
+caminho_raiz = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+load_dotenv(os.path.join(caminho_raiz, '.env'))
 
 # Adiciona a raiz do projeto ao caminho do Python
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(caminho_raiz)
 
+# A partir daqui o Orquestrador já vai encontrar as tuas chaves!
 from jarvis_system.cortex_frontal.orchestrator.orchestrator import Orchestrator
 from jarvis_system.cortex_frontal.event_bus import bus, Evento
 from jarvis_system.protocol import Eventos

@@ -35,7 +35,7 @@ class KeyManager:
         else:
             log.critical("❌ Nenhuma chave GROQ_API_KEY encontrada no .env!")
 
-    def get_current_client(self) -> Optional[Groq]:
+    def get_client(self) -> Optional[Groq]:
         if not self.keys: return None
         return Groq(api_key=self.keys[self.current_index])
 
