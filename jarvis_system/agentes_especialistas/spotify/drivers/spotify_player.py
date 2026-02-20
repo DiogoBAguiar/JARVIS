@@ -1,7 +1,6 @@
 import time
 import logging
 
-# --- CORREÇÃO DE IMPORTAÇÃO ---
 try:
     from .spotify_selectors import SpotifySelectors as S
 except ImportError:
@@ -12,9 +11,6 @@ logger = logging.getLogger("SPOTIFY_PLAYER")
 class SpotifyPlayerMixin:
     """Mixin responsável por Play, Pause, Dispositivos e Leitura (Com Validação Rigorosa)."""
 
-    # ... (MANTENHA TODO O RESTO DO CÓDIGO IGUAL AO QUE JÁ TINHA) ...
-    # Só a parte de cima dos imports que mudou.
-    
     def verificar_se_eh_anuncio(self) -> bool:
         try:
             ad_link = self.page.locator(S.SEL_AD_LINK)
@@ -33,10 +29,12 @@ class SpotifyPlayerMixin:
         for i in range(tentativas):
             time.sleep(3)
             track, artist = self.obter_estado_reproducao()
+            
             if self.verificar_se_eh_anuncio():
                 logger.warning(f"⚠️ Detectado ANÚNCIO (Tentativa {i+1}/{tentativas}). Aguardando 10s...")
                 time.sleep(10)
                 continue
+                
             if track:
                 termo_lower = termo_esperado.lower()
                 match_artista = artist and (termo_lower in artist.lower() or artist.lower() in termo_lower)
@@ -45,10 +43,13 @@ class SpotifyPlayerMixin:
                     logger.info(f"🎉 [Sucesso] Confirmado tocando: '{track}' - '{artist}'")
                     return True
                 else:
-                    logger.warning(f"❌ [Erro] Tocando '{track}' de '{artist}', mas pedi '{termo_esperado}'.")
-                    return False 
+                    logger.warning(f"⚠️ [Mismatch] Tocando '{track}', mas pedi '{termo_esperado}'. Aguardando sync...")
+                    # CORREÇÃO: Usamos 'continue' em vez de 'return False' para que ele 
+                    # tente as 3 vezes. Às vezes a transferência de device atrasa o nome da música.
+                    continue 
             else:
                 logger.warning("⚠️ Rodapé vazio ou carregando... tentando novamente.")
+                
         logger.error("❌ Falha na validação após todas as tentativas.")
         return False
 
@@ -59,13 +60,32 @@ class SpotifyPlayerMixin:
             if btn_menu.count() > 0:
                  btn_menu.click()
                  time.sleep(1.5) 
+                 
             selector = S.SEL_DEVICE_ITEM_TEXT.format(device_name, device_name, device_name)
             jarvas_btn = self.page.locator(selector).first
+            
             if jarvas_btn.is_visible():
                 jarvas_btn.click()
                 logger.info(f"✅ Conectado ao {device_name}!")
+                
+                # --- CORREÇÃO: RETOMADA FORÇADA APÓS TRANSFERÊNCIA ---
+                time.sleep(2.5) # Aguarda o Spotify Desktop "acordar" e puxar a sessão
+                try:
+                    # Seleciona o botão central de Play/Pause no rodapé
+                    play_pause_btn = self.page.locator('button[data-testid="control-button-playpause"]').first
+                    if play_pause_btn.is_visible():
+                        aria = play_pause_btn.get_attribute("aria-label") or ""
+                        # Se a legenda for "Tocar" (ou Play), significa que a música pausou
+                        if "Tocar" in aria or "Play" in aria:
+                            logger.info("⚠️ A música pausou na transferência. Forçando retomada (Play) no rodapé...")
+                            play_pause_btn.click()
+                except Exception as e:
+                    logger.warning(f"Não foi possível checar o status de pausa após transferência: {e}")
+                # -----------------------------------------------------
+
                 self.page.mouse.click(0, 0)
                 return True
+                
             self.page.mouse.click(0, 0)
             return False
         except Exception as e:
@@ -84,16 +104,19 @@ class SpotifyPlayerMixin:
                 return True
             btn_action.click(force=True)
             return True
+            
         btn_top = self.page.locator(f'{S.SEL_TOP_RESULT_CARD} {S.SEL_PLAY_BUTTON_GENERIC}').first
         if btn_top.is_visible():
             logger.info("   -> Play Top Result")
             btn_top.click(force=True)
             return True
+            
         btn_generic = self.page.locator(S.SEL_PLAY_BUTTON_GENERIC).first
         if btn_generic.is_visible():
             logger.info("   -> Play Genérico")
             btn_generic.click(force=True)
             return True
+            
         return False
 
     def tocar_musicas_curtidas(self) -> bool:

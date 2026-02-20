@@ -6,7 +6,7 @@
                 "y": 95
             },
             "filter_btn_m\u00fasica": {
-                "x": 609,
+                "x": 291,
                 "y": 95
             },
             "filter_btn_musica": {
@@ -22,8 +22,8 @@
                 "y": 96
             },
             "artist_pos_coldplay": {
-                "x": 598,
-                "y": 774
+                "x": 150,
+                "y": 343
             },
             "artist_pos_linkin_park": {
                 "x": 158,
@@ -34,8 +34,8 @@
                 "y": 343
             },
             "play_btn_pos_coldplay": {
-                "x": 346,
-                "y": 483
+                "x": 136,
+                "y": 382
             },
             "artist_pos_metallia": {
                 "x": 152,
@@ -62,7 +62,7 @@
                 "y": 382
             },
             "filter_btn_m\u00fasica_alt": {
-                "x": 207,
+                "x": 609,
                 "y": 95
             },
             "artist_pos_foco": {
@@ -79,7 +79,7 @@
             },
             "ui_pos_track_list_header": {
                 "x": 450,
-                "y": 391
+                "y": 147
             },
             "play_btn_pos_playlist_playlist_foco": {
                 "x": 136,
