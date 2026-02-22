@@ -10,7 +10,26 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("HIPOCAMPO_REFLEXOS")
 
 class HipocampoReflexos:
+    _instance = None
+    _init_lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        """
+        Garante que apenas UMA instância desta classe exista na memória.
+        Padrão Singleton thread-safe.
+        """
+        if not cls._instance:
+            with cls._init_lock:
+                if not cls._instance:
+                    cls._instance = super(HipocampoReflexos, cls).__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+
     def __init__(self):
+        # Impede que o __init__ seja chamado novamente se a instância já existir
+        if self._initialized:
+            return
+            
         self.storage = ReflexosStorage()
         self._lock = threading.RLock()
         
@@ -19,6 +38,7 @@ class HipocampoReflexos:
         self.regex_patterns = [] # [(Pattern, callback)]
         
         self.reload()
+        self._initialized = True
 
     def reload(self):
         with self._lock:
@@ -121,4 +141,6 @@ class HipocampoReflexos:
         return False
 
 # Singleton Global para uso em outros módulos
+# A instância é criada normalmente, mas se for importada 2 vezes,
+# o __new__ garantirá que a mesma seja reaproveitada.
 reflexos = HipocampoReflexos()

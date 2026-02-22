@@ -2,7 +2,7 @@
     "spotify": {
         "1160x680": {
             "filter_btn_artista": {
-                "x": 206,
+                "x": 373,
                 "y": 95
             },
             "filter_btn_m\u00fasica": {
@@ -22,8 +22,8 @@
                 "y": 96
             },
             "artist_pos_coldplay": {
-                "x": 150,
-                "y": 343
+                "x": 151,
+                "y": 344
             },
             "artist_pos_linkin_park": {
                 "x": 158,
@@ -54,8 +54,8 @@
                 "y": 382
             },
             "filter_btn_artista_alt": {
-                "x": 373,
-                "y": 95
+                "x": 289,
+                "y": 146
             },
             "play_btn_pos_metallica": {
                 "x": 136,
@@ -88,6 +88,16 @@
             "playlist_pos_foco": {
                 "x": 220,
                 "y": 181
+            }
+        },
+        "78x25": {
+            "artist_pos_coldplay": {
+                "x": 367,
+                "y": -268
+            },
+            "play_btn_pos_coldplay": {
+                "x": -418,
+                "y": 17
             }
         }
     }

@@ -9,7 +9,7 @@ except ImportError:
 logger = logging.getLogger("SPOTIFY_PLAYER")
 
 class SpotifyPlayerMixin:
-    """Mixin responsável por Play, Pause, Dispositivos e Leitura (Com Validação Rigorosa)."""
+    """Mixin responsável por Play, Pause, Dispositivos e Leitura (Com Validação Rigorosa e Espera Dinâmica)."""
 
     def verificar_se_eh_anuncio(self) -> bool:
         try:
@@ -27,7 +27,10 @@ class SpotifyPlayerMixin:
     def validar_reproducao_rigorosa(self, termo_esperado: str, tentativas=3) -> bool:
         logger.info(f"🕵️ [Auditoria] Validando se está tocando: '{termo_esperado}'...")
         for i in range(tentativas):
-            time.sleep(3)
+            # O obter_estado_reproducao já tem um wait_for_selector de 5s, 
+            # não precisamos de sleep longo, só uma folga na CPU.
+            time.sleep(1)
+            
             track, artist = self.obter_estado_reproducao()
             
             if self.verificar_se_eh_anuncio():
@@ -44,8 +47,6 @@ class SpotifyPlayerMixin:
                     return True
                 else:
                     logger.warning(f"⚠️ [Mismatch] Tocando '{track}', mas pedi '{termo_esperado}'. Aguardando sync...")
-                    # CORREÇÃO: Usamos 'continue' em vez de 'return False' para que ele 
-                    # tente as 3 vezes. Às vezes a transferência de device atrasa o nome da música.
                     continue 
             else:
                 logger.warning("⚠️ Rodapé vazio ou carregando... tentando novamente.")
@@ -56,29 +57,45 @@ class SpotifyPlayerMixin:
     def conectar_no_jarvas(self, device_name="JARVAS") -> bool:
         logger.info(f"📡 Buscando dispositivo '{device_name}'...")
         try:
-            btn_menu = self.page.locator(S.SEL_CONNECT_DEVICE)
-            if btn_menu.count() > 0:
-                 btn_menu.click()
-                 time.sleep(1.5) 
+            # Espera inteligente pelo botão de menu de dispositivos (max 2s)
+            try:
+                self.page.wait_for_selector(S.SEL_CONNECT_DEVICE, timeout=2000)
+                btn_menu = self.page.locator(S.SEL_CONNECT_DEVICE).first
+                if btn_menu.is_visible():
+                    btn_menu.click()
+            except Exception:
+                logger.warning("Botão de Dispositivos não apareceu a tempo. Tentando sem clicar.")
                  
             selector = S.SEL_DEVICE_ITEM_TEXT.format(device_name, device_name, device_name)
-            jarvas_btn = self.page.locator(selector).first
+            
+            # Espera inteligente até o dispositivo alvo aparecer na lista (max 3s)
+            try:
+                self.page.wait_for_selector(selector, state="visible", timeout=3000)
+                jarvas_btn = self.page.locator(selector).first
+            except Exception:
+                logger.error(f"❌ O dispositivo '{device_name}' não foi encontrado na lista.")
+                self.page.mouse.click(0, 0)
+                return False
             
             if jarvas_btn.is_visible():
                 jarvas_btn.click()
                 logger.info(f"✅ Conectado ao {device_name}!")
                 
-                # --- CORREÇÃO: RETOMADA FORÇADA APÓS TRANSFERÊNCIA ---
-                time.sleep(2.5) # Aguarda o Spotify Desktop "acordar" e puxar a sessão
+                # --- RETOMADA FORÇADA DINÂMICA ---
+                # Em vez de esperar 2.5s cegamente, verificamos o estado do botão Play.
                 try:
-                    # Seleciona o botão central de Play/Pause no rodapé
+                    # Dá 0.5s para o Spotify Web processar o clique
+                    time.sleep(0.5)
                     play_pause_btn = self.page.locator('button[data-testid="control-button-playpause"]').first
-                    if play_pause_btn.is_visible():
-                        aria = play_pause_btn.get_attribute("aria-label") or ""
-                        # Se a legenda for "Tocar" (ou Play), significa que a música pausou
-                        if "Tocar" in aria or "Play" in aria:
-                            logger.info("⚠️ A música pausou na transferência. Forçando retomada (Play) no rodapé...")
-                            play_pause_btn.click()
+                    # Tenta ler o atributo aria por até 2 segundos para ver se o estado mudou
+                    for _ in range(4):
+                        if play_pause_btn.is_visible():
+                            aria = play_pause_btn.get_attribute("aria-label") or ""
+                            if "Tocar" in aria or "Play" in aria:
+                                logger.info("⚠️ A música pausou na transferência. Forçando retomada (Play) no rodapé...")
+                                play_pause_btn.click()
+                                break
+                        time.sleep(0.5)
                 except Exception as e:
                     logger.warning(f"Não foi possível checar o status de pausa após transferência: {e}")
                 # -----------------------------------------------------
@@ -121,14 +138,20 @@ class SpotifyPlayerMixin:
 
     def tocar_musicas_curtidas(self) -> bool:
         try:
-            btn = self.page.locator(S.SEL_BTN_PLAY_CURTIDAS).first
-            if btn.is_visible():
-                btn.click()
-                return True
+            # Espera inteligente pelo botão de Play nas músicas curtidas
+            try:
+                self.page.wait_for_selector(S.SEL_BTN_PLAY_CURTIDAS, timeout=2000)
+                btn = self.page.locator(S.SEL_BTN_PLAY_CURTIDAS).first
+                if btn.is_visible():
+                    btn.click()
+                    return True
+            except: pass
+
             row = self.page.locator(S.SEL_MUSICAS_CURTIDAS_ROW).first
             if row.is_visible():
                 row.click()
-                time.sleep(1.5)
+                # Espera inteligente pelo botão de ação (em vez de sleep 1.5)
+                self.page.wait_for_selector(S.SEL_BTN_VERDE_ACTION_BAR, state="visible", timeout=3000)
                 self.page.locator(S.SEL_BTN_VERDE_ACTION_BAR).click(force=True)
                 return True
         except: pass

@@ -1,4 +1,4 @@
-# jarvis_system/cortex_frontal/orchestrator/cognition.py
+# jarvis_system/cortex_frontal/orchestrator/cognitionHandler.py
 import json
 import re
 import random
@@ -31,13 +31,15 @@ class CognitionHandler:
         # 2. Pensamento (LLM)
         raw_response = self.brain.pensar(text)
         
-        # 3. Extração de JSON (Automação)
-        json_action = self._extract_json(raw_response)
-        if json_action:
-            # Se tem JSON, a prioridade é a ação, não a fala do LLM
-            return "", json_action
+        # 3. Extração Múltipla de JSON (Automação Implacável)
+        json_actions_list = self._extract_json(raw_response)
+        
+        if json_actions_list:
+            # Se tem JSON, extraímos o texto puro para falar (removendo os blocos JSON da fala)
+            clean_speech = self._remove_json_blocks(raw_response)
+            return clean_speech, json_actions_list
 
-        # 4. Curiosidade (Adiciona perguntas para manter papo)
+        # 4. Curiosidade (Adiciona perguntas para manter papo se não for ação de sistema)
         if self.curiosity:
             if len(raw_response.split()) < 15 and random.random() < 0.3:
                 q = self.curiosity.gerar_pergunta(text)
@@ -45,30 +47,60 @@ class CognitionHandler:
 
         return raw_response, None
 
+    def _remove_json_blocks(self, text: str) -> str:
+        """Limpa o texto da fala removendo os blocos JSON para o sintetizador de voz não os ler."""
+        # Remove markdown de blocos de código
+        text = re.sub(r'```json\n(.*?)\n```', '', text, flags=re.DOTALL)
+        text = re.sub(r'```(.*?)```', '', text, flags=re.DOTALL)
+        # Remove arrays crus
+        text = re.sub(r'\[\s*\{.*?\}\s*\]', '', text, flags=re.DOTALL)
+        return text.strip()
+
     def _extract_json(self, text: str):
         """
-        Caça blocos de JSON gerados pelo LLM.
-        Agora suporta o retorno em formato de Grafo de Tarefas (Listas JSON).
+        Caça múltiplos blocos de JSON gerados pelo LLM e funde-os num único Grafo de Tarefas (DAG).
+        Resistente a 'text walls' e explicações descritivas da IA.
         """
-        import json
-        import re
-        try:
-            # 1. Tenta extrair um Array JSON (Novo Padrão DAG - Fase 2)
-            if "[" in text and "]" in text:
-                match_array = re.search(r'\[.*\]', text, re.DOTALL)
-                if match_array:
-                    # Avalia se o array capturado parece conter objetos
-                    parsed = json.loads(match_array.group(0))
-                    if isinstance(parsed, list):
-                        return parsed
+        tarefas_mestre = []
+        
+        # 1. Tenta extrair blocos de código Markdown explícitos (```json ... ```)
+        blocos_markdown = re.findall(r'```(?:json)?\s*(.*?)\s*```', text, re.DOTALL)
+        for bloco in blocos_markdown:
+            try:
+                parsed = json.loads(bloco)
+                if isinstance(parsed, list): tarefas_mestre.extend(parsed)
+                elif isinstance(parsed, dict): tarefas_mestre.append(parsed)
+            except Exception:
+                continue
+                
+        # Se os blocos markdown deram sucesso, retornamos
+        if tarefas_mestre:
+            return tarefas_mestre
 
-            # 2. Tenta extrair Objeto único (Fallback para o padrão antigo)
-            if "{" in text and "}" in text:
-                match_obj = re.search(r'\{.*\}', text, re.DOTALL)
-                if match_obj:
-                    return json.loads(match_obj.group(0))
+        # 2. Busca por Arrays (Listas JSON brutas)
+        # Encontra todos os blocos que abrem com [ e fecham com ] e contêm objetos {}
+        matches_arrays = re.findall(r'\[\s*\{.*?\}\s*\]', text, re.DOTALL)
+        for match in matches_arrays:
+            try:
+                parsed = json.loads(match)
+                if isinstance(parsed, list):
+                    tarefas_mestre.extend(parsed)
+            except Exception:
+                continue
 
-        except Exception as e:
-            log.warning(f"Falha ao parsear JSON do LLM: {e}")
-            
+        # 3. Busca por Objetos Únicos (Fallback)
+        # Se não achou arrays, procura objetos soltos
+        if not tarefas_mestre:
+            matches_objs = re.findall(r'\{\s*".*?\}\s*', text, re.DOTALL)
+            for match in matches_objs:
+                try:
+                    parsed = json.loads(match)
+                    if isinstance(parsed, dict) and ("task_id" in parsed or "ferramenta" in parsed):
+                        tarefas_mestre.append(parsed)
+                except Exception:
+                    continue
+
+        if tarefas_mestre:
+            return tarefas_mestre
+
         return None

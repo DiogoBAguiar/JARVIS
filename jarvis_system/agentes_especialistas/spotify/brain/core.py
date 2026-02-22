@@ -1,19 +1,9 @@
-import os
-import json
 import logging
 import re
 import unicodedata
 from typing import Optional
 
-try:
-    from agno.agent import Agent
-    from agno.models.groq import Groq
-except ImportError:
-    Agent = None
-    Groq = None
-
 # Imports Locais
-from .llm_setup import LLMFactory
 from .tools import SpotifyToolkit
 from .limbic_system import LimbicSystem
 
@@ -25,31 +15,7 @@ class SpotifyBrain:
         self.consciencia = consciencia
         self.toolkit = SpotifyToolkit(controller, consciencia)
         self.limbic = LimbicSystem(controller)
-        self.model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-        self.agent = self._inicializar_agno()
-
-    def _inicializar_agno(self) -> Optional[Agent]:
-        if not Agent: return None
-        llm = LLMFactory.get_model(self.model_name)
-        if not llm and Groq:
-            api_key = os.getenv("GROQ_API_KEY")
-            if api_key: llm = Groq(id=self.model_name, api_key=api_key)
-        if not llm: return None
-
-        return Agent(
-            model=llm,
-            description="Você é o Cérebro do Spotify Jarvis. Decida a ação JSON.",
-            instructions=[
-                "Retorne APENAS um JSON válido.",
-                "Formatos:",
-                '1. {"acao": "tocar", "termo": "...", "tipo_estimado": "musica/artista/playlist"}',
-                '2. {"acao": "consultar_memoria", "termo": "..."}',
-                '3. {"acao": "comando", "tipo": "play/pause/next/prev/like"}',
-                '4. {"acao": "abrir"}',
-                '5. {"acao": "consultar_estado"}'
-            ],
-            markdown=False,
-        )
+        logger.info("🧠 Motor Reativo do Spotify inicializado (Sem Duplo Cérebro LLM).")
 
     # --- DETECTOR DE RUÍDO (ASCII SAFE) ---
     def _detectar_gibberish(self, texto: str) -> bool:
@@ -88,90 +54,35 @@ class SpotifyBrain:
         return False
 
     def processar(self, comando: str) -> str:
+        """
+        Processamento Reativo (Sem LLM Interno).
+        O Córtex Frontal já mastigou a intenção do utilizador.
+        """
         if not comando: return ""
         
         termo_limpo = comando.lower().replace("jarvis", "").replace("tocar", "").strip()
         
+        # 1. Filtro Anti-Ruído
         if self._detectar_gibberish(termo_limpo):
             logger.info(f"[Core] Input bloqueado por heuristica de ruido: '{termo_limpo}'")
             return "Infelizmente nao ouvi bem o que voce disse, poderia repetir?"
 
-        # --- VIA RÁPIDA (LOCAL) ---
-        acao_rapida = self._tentar_resolucao_local(comando)
-        if acao_rapida:
-            logger.info(f"⚡ Via Rápida acionada: Pulando LLM.")
-            return acao_rapida
-
-        # --- LLM (FALLBACK) ---
-        if not self.agent: return self.limbic.reagir_instintivamente(comando)
-
         try:
-            logger.info(f"🧠 [Córtex] Analisando: '{comando}'")
-            resposta = self.agent.run(comando)
-            texto_resp = getattr(resposta, 'content', str(resposta))
-            texto_limpo = texto_resp.replace("```json", "").replace("```", "").strip()
+            # 2. Resolução Local Heurística (Fase 3: Limpeza e Vetorização)
+            acao_local = self._tentar_resolucao_local(comando)
             
-            try:
-                decisao = json.loads(texto_limpo)
-            except:
-                decisao = {"acao": "tocar", "termo": comando, "tipo_estimado": "musica"}
+            if acao_local:
+                logger.info(f"⚡ Resolução Local executada com sucesso.")
+                return acao_local
 
-            logger.info(f"🤔 Decisão Inicial IA: {decisao}")
-
-            acao = decisao.get("acao")
-            
-            if acao == "consultar_estado":
-                info = self.controller.ler_musica_atual()
-                if info and info.get('track'):
-                    return f"Atualmente tocando: {info['track']} de {info['artist']}."
-                return "Não consegui identificar a música tocando no momento."
-
-            if acao in ["next", "proxima", "pular", "avançar", "proximo"]: return self.toolkit.proxima_faixa()
-            if acao in ["prev", "previous", "anterior", "voltar"]: return self.toolkit.faixa_anterior()
-            if acao in ["play", "pause", "continuar", "parar", "reproduzir"]: return self.toolkit.pausar_ou_continuar()
-            if acao in ["like", "curtir", "favoritar"]: return self.toolkit.curtir_musica()
-
-            if acao == "tocar":
-                termo = decisao.get("termo") or decisao.get("musica") or comando
-                if self._detectar_gibberish(termo):
-                    return "Infelizmente nao ouvi bem o que voce disse, poderia repetir?"
-
-                tipo_ia = decisao.get("tipo_estimado", "musica").lower()
-                
-                is_artist_db = self.toolkit.verificar_se_artista(termo)
-                if is_artist_db:
-                    logger.info(f"📚 Confirmado pelo Banco: '{termo}' é um ARTISTA.")
-                    return self.toolkit.tocar_musica(termo, tipo="artista")
-                
-                correcao = self.toolkit.sugerir_correcao(termo)
-                if correcao:
-                    logger.info(f"✨ Erro de audição corrigido: '{termo}' -> '{correcao}'")
-                    return self.toolkit.tocar_musica(correcao, tipo="artista")
-                
-                return self.toolkit.tocar_musica(termo, tipo=tipo_ia)
-
-            elif acao == "consultar_memoria":
-                termo = decisao.get("termo")
-                sugestao = self.toolkit.consultar_memoria_musical(termo)
-                if "Encontrei" in sugestao:
-                    musica_final = sugestao.split("'")[1] if "'" in sugestao else termo
-                    return self.toolkit.tocar_musica(musica_final, tipo="musica")
-                return self.toolkit.tocar_musica(termo, tipo="musica")
-            
-            elif acao == "comando":
-                tipo = decisao.get("tipo")
-                if "play" in tipo or "pause" in tipo: return self.toolkit.pausar_ou_continuar()
-                if "next" in tipo: return self.toolkit.proxima_faixa()
-                if "prev" in tipo: return self.toolkit.faixa_anterior()
-                if "like" in tipo: return self.toolkit.curtir_musica()
-                
-            elif acao == "abrir":
-                return self.toolkit.iniciar_aplicativo()
-
-            return "Comando não compreendido."
+            # 3. Fallback Final (Sistema Límbico)
+            # Se a heurística local falhou completamente (o que é raro após a purga),
+            # o sistema límbico instintivo assume.
+            logger.warning(f"⚠️ Nenhuma heurística atendeu ao comando: '{comando}'. Acionando Sistema Límbico.")
+            return self.limbic.reagir_instintivamente(comando)
 
         except Exception as e:
-            logger.error(f"🔥 Erro no Router: {e}")
+            logger.error(f"🔥 Erro no Router Reativo do Spotify: {e}")
             return self.limbic.reagir_instintivamente(comando)
 
     def _normalizar(self, texto: str) -> str:
@@ -180,7 +91,6 @@ class SpotifyBrain:
     def _tentar_resolucao_local(self, comando: str) -> Optional[str]:
         """
         Tenta resolver o comando usando heurísticas locais e banco de dados de artistas.
-        Refatorado para limpar o ruído (Fase 3) antes da identificação.
         """
         cmd_full = comando.lower().strip()
         cmd_norm = self._normalizar(cmd_full)
@@ -206,20 +116,17 @@ class SpotifyBrain:
              return "Não consegui ler o nome da música agora."
 
         # --- FASE 3: PURGA DE RUÍDO (LIMPEZA DE PREFIXO) ---
-        # Removemos Jarvis e verbos de ação para não poluir a identificação do artista.
         cmd_limpo = re.sub(r"^(jarvis,?)?\s*(tocar|ouvir|bota|põe|reproduzir|toca|escute|play)\b", "", cmd_norm).strip()
         cmd_limpo = re.sub(r"\s+(a[íi]|agora|por favor|pfv)$", "", cmd_limpo).strip()
         
         if not cmd_limpo: return None
 
-        # 4. Busca por Artista no Banco de Dados (Agora com o comando limpo!)
+        # 4. Busca por Artista no Banco de Dados
         artistas_conhecidos = self.toolkit.db_artistas
         if artistas_conhecidos:
-            # Procuramos o artista dentro do que sobrou da frase limpa
             for art in sorted(artistas_conhecidos, key=len, reverse=True):
                 art_norm = self._normalizar(art)
                 if art_norm in cmd_limpo:
-                    # Se achou o artista, extrai o que sobrou (ex: "Sparks" de "Sparks Coldplay")
                     termo_restante = cmd_limpo.replace(art_norm, "").replace(" de ", " ").strip()
                     
                     logger.info(f"🎯 Vetor Artista identificado: '{art}'. Resto: '{termo_restante}'")
@@ -227,7 +134,6 @@ class SpotifyBrain:
                     if not termo_restante or termo_restante in ["um som", "som", "uma musica"]:
                         return self.toolkit.tocar_musica(art, tipo="artista")
                     
-                    # Toca "Musica + Artista" para maior precisão no fallback
                     return self.toolkit.tocar_musica(f"{termo_restante} {art}", tipo="musica")
 
         # 5. Fallback: Se não achou artista no banco, manda o termo limpo para a busca genérica

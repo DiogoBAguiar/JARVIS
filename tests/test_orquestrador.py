@@ -37,6 +37,12 @@ def testar_roteamento():
             "jarvis abrir bloco de notas",
             "jarvis qual é o sentido da vida?"
             "jarvis, abra o bloco de notas e me diga qual é o clima atual"
+            "jarvis, inicie a calculadora por favor"
+            "jarvis, inicie a calculadora por favor e me diga quanto é 123 vezes 456"
+            "jarvis, abra o league of legends"
+            "jarvis, toque um jazz relaxante no spotify"
+            "jarvis, me explique o que é um grafo acíclico direcionado de forma simples"
+            
         ]
         
         for frase in frases_teste:

@@ -21,86 +21,115 @@ class VisualFinder:
         
         # Carrega as imagens de referência na memória para performance
         self.play_images = []
-        paths = [
-            os.path.join(base_dir, "img", "play_spotify.png"),      # Botão Verde Grande
-            os.path.join(base_dir, "img", "play_small_white.png")   # Botão Lista
+        self.pause_images = [] # Adicionado: Referências de Pause
+        
+        paths_play = [
+            os.path.join(base_dir, "img", "play_spotify.png"),      # Botão Verde Grande (Play)
+            os.path.join(base_dir, "img", "play_small_white.png")   # Botão Lista (Play)
         ]
         
-        for p in paths:
+        paths_pause = [
+            os.path.join(base_dir, "img", "pause_spotify.png")      # Botão Verde Grande (Pause)
+        ]
+        
+        for p in paths_play:
             if os.path.exists(p):
-                # Carrega em formato que o OpenCV entende (BGR)
                 img = cv2.imread(p)
-                if img is not None:
-                    self.play_images.append((os.path.basename(p), img))
-                else:
-                    logger.warning(f"Falha ao carregar imagem (formato inválido?): {p}")
+                if img is not None: self.play_images.append((os.path.basename(p), img))
             else:
-                 logger.warning(f"Imagem de referência não encontrada: {p}")
+                logger.warning(f"Imagem de referência (Play) não encontrada: {p}")
+                
+        for p in paths_pause:
+            if os.path.exists(p):
+                img = cv2.imread(p)
+                if img is not None: self.pause_images.append((os.path.basename(p), img))
+            else:
+                logger.warning(f"Imagem de referência (Pause) não encontrada: {p}. Cria para evitar falsos positivos!")
 
     def procurar_botao_play(self, region=None):
         """
         Busca o botão play redimensionando a referência dinamicamente.
-        Isso permite achar o botão seja ele gigante ou pequeno,
-        e previne erros de 'needle dimension > haystack'.
+        Valida se o botão encontrado não é na verdade um botão de Pause.
         """
-        
-        # 1. Tira um print da região (ou tela toda)
         try:
-            # Ajuste de bbox para PIL (Left, Top, Right, Bottom) vs (X, Y, W, H)
             bbox = None
             if region:
                 x, y, w, h = region
                 bbox = (x, y, x + w, y + h)
 
             screenshot = ImageGrab.grab(bbox=bbox)
-            # Converte PIL (RGB) para OpenCV (BGR)
             screen_np = np.array(screenshot)
             screen_cv = cv2.cvtColor(screen_np, cv2.COLOR_RGB2BGR)
         except Exception as e:
             logger.error(f"Erro ao capturar tela para busca visual: {e}")
             return None
 
-        # 2. Itera sobre as imagens de referência (Verde e Branco)
+        melhor_play_score = 0.0
+        melhor_play_loc = None
+        melhor_escala = 1.0
+        nome_play = ""
+
+        # --- BUSCA O PLAY ---
+        scales = np.linspace(0.5, 1.5, 20)[::-1]
+        
         for name, template in self.play_images:
-            
-            # 3. MÁGICA DA MULTI-ESCALA:
-            # Tenta 20 tamanhos diferentes: de 50% (0.5) até 150% (1.5) do original
-            # [::-1] inverte para começar tentando os tamanhos maiores primeiro
-            scales = np.linspace(0.5, 1.5, 20)[::-1]
-            
             for scale in scales: 
-                # Redimensiona o template (referência)
                 new_width = int(template.shape[1] * scale)
                 new_height = int(template.shape[0] * scale)
                 
-                # Proteção Crítica: Se o template redimensionado for maior que a tela de busca,
-                # pula essa escala. Isso evita o crash do OpenCV.
                 if new_width > screen_cv.shape[1] or new_height > screen_cv.shape[0]:
                     continue
 
                 resized_template = cv2.resize(template, (new_width, new_height))
 
-                # Tenta o match
                 try:
                     res = cv2.matchTemplate(screen_cv, resized_template, cv2.TM_CCOEFF_NORMED)
                     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-                    # Se a confiança for alta (> 0.85)
-                    if max_val > 0.85:
-                        logger.info(f"✅ Botão '{name}' encontrado! Escala: {scale:.2f}x | Confiança: {max_val:.2f}")
-                        
-                        # Calcula o centro do botão encontrado NA IMAGEM CAPTURADA
-                        match_x = max_loc[0] + new_width // 2
-                        match_y = max_loc[1] + new_height // 2
+                    if max_val > 0.85 and max_val > melhor_play_score:
+                        melhor_play_score = max_val
+                        melhor_play_loc = max_loc
+                        melhor_escala = scale
+                        nome_play = name
+                        # Como OpenCV é rápido, pegamos logo o melhor possível e quebramos o loop
+                        if max_val > 0.95: break 
+                except Exception: continue
 
-                        # Se usamos uma região (crop), precisamos somar o offset para ter a coord absoluta da tela
-                        if region:
-                            match_x += region[0]
-                            match_y += region[1]
+        # --- VALIDAÇÃO CONTRA FALSO POSITIVO (PAUSE) ---
+        if melhor_play_score > 0.85 and melhor_play_loc:
+            # Se a confiança for moderada (85% a 92%), pode ser um Pause disfarçado.
+            # Vamos testar o template do Pause no mesmo tamanho da escala que achou o Play.
+            if melhor_play_score < 0.94 and self.pause_images:
+                melhor_pause_score = 0.0
+                for name, template in self.pause_images:
+                    new_width = int(template.shape[1] * melhor_escala)
+                    new_height = int(template.shape[0] * melhor_escala)
+                    
+                    if new_width <= screen_cv.shape[1] and new_height <= screen_cv.shape[0]:
+                        resized_template = cv2.resize(template, (new_width, new_height))
+                        res = cv2.matchTemplate(screen_cv, resized_template, cv2.TM_CCOEFF_NORMED)
+                        _, max_val, _, _ = cv2.minMaxLoc(res)
+                        if max_val > melhor_pause_score:
+                            melhor_pause_score = max_val
+                
+                # O Grande Duelo de Templates: Qual template se parece mais com o botão que achámos?
+                if melhor_pause_score > melhor_play_score:
+                    logger.info(f"⚠️ FALSO POSITIVO EVITADO: Achei um botão verde (Score Play: {melhor_play_score:.2f}), mas é o PAUSE (Score Pause: {melhor_pause_score:.2f}). Ignorando.")
+                    # Retorna True ou None? Retornar None faz a estratégia tentar o clique cego (Enter).
+                    # Retornar True faria a estratégia pensar que o clique foi dado com sucesso.
+                    # Mas o finder deve apenas Dizer onde está. Vamos retornar None para fingir que não achou o Play.
+                    return "ALREADY_PLAYING"
 
-                        return (match_x, match_y)
-                except Exception:
-                    continue
+            # É um Play Genuíno!
+            logger.info(f"✅ Botão '{nome_play}' genuíno encontrado! Escala: {melhor_escala:.2f}x | Confiança: {melhor_play_score:.2f}")
+            match_x = melhor_play_loc[0] + int(template.shape[1] * melhor_escala) // 2
+            match_y = melhor_play_loc[1] + int(template.shape[0] * melhor_escala) // 2
+
+            if region:
+                match_x += region[0]
+                match_y += region[1]
+
+            return (match_x, match_y)
 
         return None
 
